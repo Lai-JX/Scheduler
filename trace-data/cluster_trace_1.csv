@@ -1,0 +1,2 @@
+job_id,num_gpu,submit_time,iterations,model_name,batch_size,duration,interval,iteration_time,resource_time_0,resource_time_1,resource_time_2,priority
+353,1,1903803000,247,vgg16,4,11234000,96000,426,0.6,410,0,0
