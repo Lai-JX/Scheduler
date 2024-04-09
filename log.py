@@ -43,8 +43,8 @@ class _Log(object):
         self.log_path = FLAGS.log_path
         if self.log_path[-1] == '/':
             self.log_path = self.log_path[:-1]
-        utils.print_fn(self.log_path)
-        utils.print_fn(' ')
+        # utils.print_fn(self.log_path)
+        # utils.print_fn(' ')
 
         #prepare folder
         cmd = 'mkdir -p ' + self.log_path

@@ -33,6 +33,24 @@ class Task(object):
         return 9013 + (port_count % 90)                                           # ljx
     
         # return utils.find_free_port()
+    def set_hostfile(self):
+        # 配置
+        hosts = {0:'job-ljx-70bbc-5pd66'}   # node_id:hostname
+        ssh_ports = {0:22}                  # node_id:ssh_port
+        gpu_per_node = 8
+
+        hostfile_list = []
+        count = 0                           # 已分配的gpu数
+        for node_id in self._node_id:
+            gpu_to_allocate = self._num_gpu - count
+            if gpu_to_allocate < gpu_per_node:
+                hostfile_list.append(f'{hosts[node_id]} slots={gpu_to_allocate} port={ssh_ports[node_id]}')
+                count += gpu_to_allocate
+            else:
+                hostfile_list.append(f'{hosts[node_id]} slots={gpu_per_node} port={ssh_ports[node_id]}')
+                count += gpu_per_node
+        return hostfile_list
+
 
 
     @staticmethod
@@ -67,11 +85,8 @@ class Task(object):
         hostfile_dir = self._this_dir+'/workloads/hostfiles'
         assert os.path.exists(hostfile_dir)
         print('self._node_id:',self._node_id)
-        # hostfile_list = [f'worker-{node_id}\n' for node_id in self._node_id]    # ljx:需要改为从gpu1开始  
-        hostfile_list = [f'haigpu{(node_id+2)} slots=8 port=6789\n' for node_id in self._node_id]                            # ^3 优先调度gpu2的gpu
-        if 8*len(self._node_id) != self._num_gpu:
-            hostfile_list = hostfile_list[0:-1]                                                                             # ljx:需要改为从gpu1开始
-            hostfile_list.append(f'haigpu{(self._node_id[-1]+2)} slots={self._num_gpu-(len(self._node_id)-1)*8} port=6789')  # ^3 优先调度gpu2的gpu
+        hostfile_list = self.set_hostfile()         # 设置hostfile
+        
 
         ch = '-'
         job_id_str = ch.join([str(x) for x in list(self._job_id)])

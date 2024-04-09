@@ -13,7 +13,7 @@ FLAGS = flags.FLAGS
 class Scheduler(object):
     def __init__(self, scheduler_port: int, controller_port: int) -> None:
         super().__init__()
-
+        print("\nljx: Scheduler init!")
         self._logger = utils.make_logger(__name__, FLAGS.log_path+'/master.log')
 
         self._trainers = dict()                                                     # 根据job_id存对应的client（to trainer）
@@ -23,6 +23,7 @@ class Scheduler(object):
         self._controller = Controller(controller_port, self._num_workers)           # Controller._server_for_worker 运行master_server.serve, 会等待所有的worker都准备好了
         self._src_num = 4           # ljx
         self._src_utils = [0 for _ in range(self._src_num)]
+        utils.print_fn('--------------------------------- End of Log and Scheduler ---------------------------------')
 
         # self._start_time = self._controller.get_time()
 

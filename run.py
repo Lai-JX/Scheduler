@@ -143,7 +143,7 @@ def parse_job_file(trace_file):
 
 def parse_cluster_spec():
     if FLAGS.cluster_spec:
-        print(FLAGS.cluster_spec)
+        # print(FLAGS.cluster_spec)
         spec_file = FLAGS.cluster_spec
         fd = open(spec_file, 'r')
         deli = ','
@@ -186,7 +186,7 @@ def parse_cluster_spec():
 
     '''init infra'''
     CLUSTER.init_infra()
-    CLUSTER_TMP.init_infra()
+    # CLUSTER_TMP.init_infra()
     # utils.print_fn(lp.prepare_cluster_info())
     utils.print_fn('--------------------------------- End of cluster spec ---------------------------------')
     return 
@@ -1711,10 +1711,10 @@ def parse_job_dist():
 
 def main():
 
-    if FLAGS.schedule == 'multi-dlas-gpu': 
-        if FLAGS.scheme != 'count':
-            utils.print_fn("In Main, multi-dlas-gpu without count")
-            exit()
+    # if FLAGS.schedule == 'multi-dlas-gpu': 
+    #     if FLAGS.scheme != 'count':
+    #         utils.print_fn("In Main, multi-dlas-gpu without count")
+    #         exit()
     ''' Parse input'''
     parse_job_file(FLAGS.trace_file)    # 读取工作如cluster_exp/trace-data/cluster_trace.csv，并按提交时间排序
     parse_cluster_spec()                # 如cluster_exp/cluster_specs/n1g8.csv
@@ -1730,28 +1730,33 @@ def main():
     JOBS.prepare_job_start_events()                                     # 遍历所有job，将所有time添加到JOBS.job_events(sort events based on their submit time), 并将job加到对应的start_jobs列表中 every job has been in EVENT status
 
     # sim_job_events()
-    if FLAGS.schedule == 'shortest':                                                        # SRTF
-        shortest_first_sim_jobs(scheduler)
-    elif FLAGS.schedule == 'shortest-gpu':                                                  # SRSF
-        shortest_first_sim_jobs(scheduler, True)
-    elif FLAGS.schedule == 'dlas-gpu':                                                      # Tiresias
-        dlas_sim_jobs(scheduler, True)
-    elif FLAGS.schedule == 'multi-resource-blossom-same-gpu':                               # Muri-S
-        multi_resource_blossom_same_sim_jobs(scheduler, True)
-    elif FLAGS.schedule == 'multi-resource-blossom-same-gpu-unaware':                       # Muri-L
-        multi_resource_blossom_same_sim_jobs(scheduler, True, know_duration=False)
-    elif FLAGS.schedule == 'multi-resource-blossom-same-gpu-unaware-worstordering':
-        multi_resource_blossom_same_sim_jobs(scheduler, True, know_duration=False, ordering=2)
-    elif FLAGS.schedule == 'multi-resource-gpu-unaware':
-        multi_resource_blossom_same_sim_jobs(scheduler, True, know_duration=False, blossom=False)
-    elif FLAGS.schedule == 'themis':
-        themis_sim_jobs(scheduler, )
-    elif FLAGS.schedule == 'nps':                                                           # nps  (shortestf first)
-        nps_sim_jobs(scheduler)
-    elif FLAGS.schedule == 'fifo':                                                           # nps  (shortestf first)
+    if FLAGS.schedule == 'fifo':                                                           # fifo
         fifo_sim_jobs(scheduler)
-    elif FLAGS.schedule == 'merge-antman':                                                           # mps_antman
-        merge_antman_jobs(scheduler)
+    elif FLAGS.schedule == 'sjf':                                                           # shortestf first
+        sjf_sim_jobs(scheduler)
+    elif FLAGS.schedule == 'sjf-test':                                                           # shortestf first
+        sjf_sim_jobs(scheduler)
+    elif FLAGS.schedule == 'sjf-ffs' or FLAGS.schedule == 'sjf-ffs-m':                                                           # sjf-ffs
+        sjf_ffs_jobs(scheduler)
+    # elif FLAGS.schedule == 'shortest':                                                        # SRTF
+    #     shortest_first_sim_jobs(scheduler)
+    # elif FLAGS.schedule == 'shortest-gpu':                                                  # SRSF
+    #     shortest_first_sim_jobs(scheduler, True)
+    # elif FLAGS.schedule == 'dlas-gpu':                                                      # Tiresias
+    #     dlas_sim_jobs(scheduler, True)
+    # elif FLAGS.schedule == 'multi-resource-blossom-same-gpu':                               # Muri-S
+    #     multi_resource_blossom_same_sim_jobs(scheduler, True)
+    # elif FLAGS.schedule == 'multi-resource-blossom-same-gpu-unaware':                       # Muri-L
+    #     multi_resource_blossom_same_sim_jobs(scheduler, True, know_duration=False)
+    # elif FLAGS.schedule == 'multi-resource-blossom-same-gpu-unaware-worstordering':
+    #     multi_resource_blossom_same_sim_jobs(scheduler, True, know_duration=False, ordering=2)
+    # elif FLAGS.schedule == 'multi-resource-gpu-unaware':
+    #     multi_resource_blossom_same_sim_jobs(scheduler, True, know_duration=False, blossom=False)
+    # elif FLAGS.schedule == 'themis':
+    #     themis_sim_jobs(scheduler, )
+    # elif FLAGS.schedule == 'nps':                                                           # nps  (shortestf first)
+    #     nps_sim_jobs(scheduler)
+    
     else:
         print('not support scheduler') 
 

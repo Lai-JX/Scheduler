@@ -92,11 +92,11 @@ echo -e '\n==='$THIS_DIR
 
 #get real datasets -- imagenet-1k
 # judge_path="$THIS_DIR/datasets/imagenet"
-judge_path="/root/datasets/ILSVRC2012/train/"
+judge_path="/share/datasets/ILSVRC2012_img_train/"
 
 #get nlp datasets - wikitext
 # TRAIN_FILE=$THIS_DIR/datasets/wikitext-2-raw/wiki.train.raw
-TRAIN_FILE=/root/nfs-share/Muri_exp/workloads/wikitext-2-raw/wiki.train.raw
+TRAIN_FILE=/workspace/graduation_project/Scheduler/workloads/wikitext-2-raw/wiki.train.raw
 
 arg="$@"
 echo $arg
@@ -205,7 +205,7 @@ hostfile=$THIS_DIR/hostfiles/hostfile-[${JOB_ID0}-${JOB_ID1}-${JOB_ID2}-${JOB_ID
 
 # set common command for mpirun
 # COMMON_CMD="--hostfile ${hostfile}" # ljx: 添加hostfile  --allow-run-as-root --oversubscribe --prefix /root/share/openmpi
-COMMON_CMD="--allow-run-as-root --oversubscribe --prefix /root/share/openmpi -hostfile ${hostfile} -bind-to none -map-by slot -mca btl_tcp_if_include 10.249.46.12/21  -x LD_LIBRARY_PATH -x PATH  -mca pml ob1 -mca btl ^openib -x CUDA_VISIBLE_DEVICES -x NCCL_DEBUG=INFO" # ljx: 添加hostfile -x NCCL_DEBUG=INFO -x NCCL_SOCKET_IFNAME=enp -mca oob_tcp_dynamic_ipv4_ports 9019-9025 添加 -x CUDA_VISIBLE_DEVICES 防止之前设置的环境变量失效
+COMMON_CMD="--allow-run-as-root --oversubscribe --prefix /root/share/openmpi -hostfile ${hostfile} -bind-to none -map-by slot  -x LD_LIBRARY_PATH -x PATH  -mca pml ob1 -mca btl ^openib -x CUDA_VISIBLE_DEVICES" # ljx: 添加hostfile -mca btl_tcp_if_include 10.249.46.12/21 -x NCCL_DEBUG=INFO -x NCCL_SOCKET_IFNAME=enp -mca oob_tcp_dynamic_ipv4_ports 9019-9025 添加 -x CUDA_VISIBLE_DEVICES 防止之前设置的环境变量失效
 
 if [ $NUM_GPU -ge 8 ]; then         # ljx 改为4，一台机器只有4个gpu 
     GPU_PERNODE=8
@@ -230,7 +230,7 @@ if [ $JOB_ID3 -gt $ID_MAX ]; then
 fi
 
 
-echo "mpirun -n $NUM_GPU  ${COMMON_CMD} /root/anaconda3/envs/muri/bin/python3 $THIS_DIR/main_real_util.py --model0 $MODEL0 --batch-size0 $BS0 --train-dir0 $TRAIN_DIR0 --num-workers0 ${NUM_WORKERS0} --prefetch-factor0 ${PREFETCH_FACTOR0} --iters0 $ITER0 --job-id0 $JOB_ID0 $RESUME0 --model1 $MODEL1 --batch-size1 $BS1 --train-dir1 $TRAIN_DIR1 --num-workers1 ${NUM_WORKERS1} --prefetch-factor1 ${PREFETCH_FACTOR1} --iters1 $ITER1 --job-id1 $JOB_ID1 $RESUME1 --model2 $MODEL2 --batch-size2 $BS2 --train-dir2 $TRAIN_DIR2 --num-workers2 ${NUM_WORKERS2} --prefetch-factor2 ${PREFETCH_FACTOR2} --iters2 $ITER2 --job-id2 $JOB_ID2 $RESUME2 --model3 $MODEL3 --batch-size3 $BS3 --train-dir3 $TRAIN_DIR3 --num-workers3 ${NUM_WORKERS3} --prefetch-factor3 ${PREFETCH_FACTOR3} --iters3 $ITER3 --job-id3 $JOB_ID3 $RESUME3 --this-dir $THIS_DIR $arg >$THIS_DIR/test_${ID_MAX}.txt"
+echo "mpirun -n $NUM_GPU  ${COMMON_CMD} /root/anaconda3/envs/muri/bin/python3 $THIS_DIR/main_util_single.py --model0 $MODEL0 --batch-size0 $BS0 --train-dir0 $TRAIN_DIR0 --num-workers0 ${NUM_WORKERS0} --prefetch-factor0 ${PREFETCH_FACTOR0} --iters0 $ITER0 --job-id0 $JOB_ID0 $RESUME0 --model1 $MODEL1 --batch-size1 $BS1 --train-dir1 $TRAIN_DIR1 --num-workers1 ${NUM_WORKERS1} --prefetch-factor1 ${PREFETCH_FACTOR1} --iters1 $ITER1 --job-id1 $JOB_ID1 $RESUME1 --model2 $MODEL2 --batch-size2 $BS2 --train-dir2 $TRAIN_DIR2 --num-workers2 ${NUM_WORKERS2} --prefetch-factor2 ${PREFETCH_FACTOR2} --iters2 $ITER2 --job-id2 $JOB_ID2 $RESUME2 --model3 $MODEL3 --batch-size3 $BS3 --train-dir3 $TRAIN_DIR3 --num-workers3 ${NUM_WORKERS3} --prefetch-factor3 ${PREFETCH_FACTOR3} --iters3 $ITER3 --job-id3 $JOB_ID3 $RESUME3 --this-dir $THIS_DIR $arg >$THIS_DIR/test_${ID_MAX}.txt"
 
 echo -e "\n\n\n"
 # exec /home/jxlai/share/openmpi/bin/mpirun -n $NUM_GPU --npernode $GPU_PERNODE ${COMMON_CMD} \       # ljx: mpirun需要用绝对路径，否则会报错

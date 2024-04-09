@@ -52,6 +52,8 @@ class Trainer(object):
     def update_stats(self, iteration_time):
         self._finished_iteraions += 1
         self._logger.info(f'trainer update_stats: {self._finished_iteraions}, {iteration_time}')
+    def model_load_time(self, load_time):
+        self._logger.info(f'trainer model load time: {load_time}')
 
 
     def record(self, iteration_time):

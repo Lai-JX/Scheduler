@@ -179,10 +179,10 @@ class _Switch(object):
         else:
             need_cpu = int(need_gpu * 6) # worker:2, ps:4
 
-        print("try_single_node_alloc: ", need_gpu, need_cpu, JOBS.worker_mem)
+        # print("try_single_node_alloc: ", need_gpu, need_cpu, JOBS.worker_mem)
 
         for node in self.node_list:
-            print(node.id, node.check_free_gpus(), node.check_free_cpus(), node.free_mem)
+            # print(node.id, node.check_free_gpus(), node.check_free_cpus(), node.free_mem)
             if (node.check_free_gpus() >= need_gpu) and (node.check_free_cpus() >= need_cpu) and (node.free_mem >= JOBS.worker_mem):
                 # if node.alloc_gpus(need_gpu) == False:
                 if not_place==False:

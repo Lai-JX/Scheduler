@@ -234,7 +234,7 @@ class _TFJobs(object):
         if 'submit_time' in job_dict:
             job_dict['r_submit_time'] = int(-1 * job_dict['submit_time'])
             # job_dict['submit_time'] -= 275400                               # ljx: 减少等待时间
-        if 'antman' in FLAGS.schedule:
+        if 'antman' in FLAGS.schedule or FLAGS.scheme == 'merge':
             if 'priority' not in job_dict:
                 job_dict['priority'] = random.randint(0,1)
             if 'gpu_util' not in job_dict:
@@ -525,7 +525,7 @@ class _TFJobs(object):
         if FLAGS.schedule == 'multi-dlas-gpu':
             num_gpu = job['num_gpu']
             self.gpu_job[num_gpu].runnable_jobs.append(job)
-        elif 'multi-resource' in FLAGS.schedule or 'antman' in FLAGS.schedule:
+        elif 'multi-resource' in FLAGS.schedule or 'antman' in FLAGS.schedule or FLAGS.scheme == 'merge':
             # job['executed_iteration'] = 0
             self.runnable_jobs.append(job)
         else:
@@ -616,6 +616,7 @@ class _TFJobs(object):
         self.job_events.sort(key = lambda e:e.__getitem__('time'))
         utils.print_fn('Init, add job start events')
         self.print_job_events()
+        utils.print_fn('--------------------------------- End of job events ---------------------------------')
 
 
     def add_migratable(self, job):

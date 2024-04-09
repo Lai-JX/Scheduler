@@ -12,7 +12,7 @@ FLAGS = flags.FLAGS
 class Controller(object):
     def __init__(self, port: int, num_workers: int) -> None:
         super().__init__()
-        print("ljx: Controller init!\n")
+        print("\nljx: Controller init!")
         self._logger = utils.make_logger(__name__, FLAGS.log_path+'/master.log')
 
         self._num_workers = num_workers
@@ -70,7 +70,7 @@ class Controller(object):
         threads = []
         for worker in self._workers:
             self._logger.info(f'controller get util of {num_workers} worker(s) of {worker._worker_id}: {secs}s')
-            print(f'controller get util of {num_workers} worker(s) of {worker}: {secs}s')
+            # print(f'controller get util of {num_workers} worker(s) of {worker}: {secs}s')
             thread = threading.Thread(target=worker_get_util, args=(worker,))
             threads.append(thread)
             thread.start()

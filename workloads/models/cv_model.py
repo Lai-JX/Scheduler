@@ -20,7 +20,6 @@ class CVModel:
         prepare dataloader, model, optimizer for training
         '''
         self.device = torch.device("cuda")
-        # print(2)
         time0 = time.time()
         train_dataset = \
             datasets.ImageFolder(self.sargs["train_dir"],
@@ -31,8 +30,7 @@ class CVModel:
                                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                     std=[0.229, 0.224, 0.225])
                             ]))
-        # print(3)
-        # print("datasets.ImageFolder cost time:",time.time()-time0)        # ljx 大概需要380s
+        print("datasets.ImageFolder cost time:",time.time()-time0)        # ljx 大概需要380s
         # self.train_sampler是一个分布式采样器，用于在多个GPU上并行训练模型。它从train_dataset中抽取样本，并将其分配给不同的GPU （数据并行）
         self.train_sampler = torch.utils.data.distributed.DistributedSampler(
                 train_dataset, num_replicas=hvd.size(), rank=hvd.rank())
@@ -50,6 +48,7 @@ class CVModel:
 
         if self.args.cuda:
             self.model.cuda()
+        # print(6)
         
         optimizer = optim.SGD(self.model.parameters(), lr=(self.args.base_lr),
                     momentum=self.args.momentum, weight_decay=self.args.wd)
@@ -63,10 +62,10 @@ class CVModel:
         # 用于在分布式环境中广播模型参数和优化器状态，初始化时需要先同步一下
         hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
         hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
-
+        # print(7)
         # 迭代器，用于遍历数据加载器中的批量数据
         self.dataloader_iter = iter(self.train_loader)
-
+        # print(8)
         self.cur_epoch = 0
         self.batch_idx = -1
 

@@ -1,4 +1,4 @@
-# Copy from [Muri/cluster_exp](https://github.com/Rivendile/Muri/tree/main/cluster_exp)
+# Adapt from from [Muri/cluster_exp](https://github.com/Rivendile/Muri/tree/main/cluster_exp)
 
 # Testbed experiments
 Note: 

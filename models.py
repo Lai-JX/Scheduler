@@ -52,7 +52,7 @@ def get_model(model_name):
     else:
         # m_idx = random.randint(0,8)
         m_idx = 8
-        utils.print_fn('%s No model match, pick %s' % (model_name, m_names[m_idx]))
+        # utils.print_fn('%s No model match, pick %s' % (model_name, m_names[m_idx]))
 
     ret = {'name':m_names[m_idx], 'ind':m_idx, 'tensors':m_tensors[m_idx], 'mem_util':m_mem[m_idx]}
     return ret

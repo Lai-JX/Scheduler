@@ -98,12 +98,12 @@ def train():
         if visible_device_str!=None:
             split_ch = ','
             visible_devices = visible_device_str.split(split_ch)
-            filename = args.this_dir+"/profiling"+ visible_devices[hvd.local_rank()] + '-' + str(cur_pid) +".xml"
+            filename = args.profile_dir+"/profiling"+ visible_devices[hvd.local_rank()] + '-' + str(cur_pid) +".xml"
             command = "exec nvidia-smi -q -i " + visible_devices[hvd.local_rank()] + " -x -l 1 -f " + filename
             gpu_process=subprocess.Popen(command, shell=True)
         # cpu
         # cur_pid = os.getpid()
-        cpu_command = "exec top -d 0.2 -bn " + str(secs) + " -p "+ str(cur_pid) +" | grep Cpu > "+ args.this_dir + "/profiling_cpu_"+str(cur_pid) +".out"
+        cpu_command = "exec top -d 0.2 -bn " + str(secs) + " -p "+ str(cur_pid) +" | grep Cpu > "+ args.profile_dir + "/profiling_cpu_"+str(cur_pid) +".out"
         cpu_process = subprocess.Popen(cpu_command, shell=True)
 
     time_io_st = time.time()
@@ -144,8 +144,8 @@ def train():
             gpu_process.terminate()
             gpu_process.wait()
             # time.sleep(2)           # ljx
-            # filename = args.this_dir + "/profiling" + visible_devices[hvd.local_rank()] + ".xml"
-            filename = args.this_dir+"/profiling"+ visible_devices[hvd.local_rank()] + '-' + str(cur_pid) +".xml"
+            # filename = args.profile_dir + "/profiling" + visible_devices[hvd.local_rank()] + ".xml"
+            filename = args.profile_dir+"/profiling"+ visible_devices[hvd.local_rank()] + '-' + str(cur_pid) +".xml"
             memory_usage, utilization = utils.parse_xml(filename)
             for i in range(len(memory_usage)):
                 memory_usage[i] = int(memory_usage[i].split(' ')[0])
@@ -166,15 +166,16 @@ def train():
         cpu_process.wait()
         cpu_util_list = []
         print("cur_pid:",cur_pid)
-        util_str_list = open(args.this_dir + "/profiling_cpu_"+ str(cur_pid) +".out", "r").read().split('\n')
+        util_str_list = open(args.profile_dir + "/profiling_cpu_"+ str(cur_pid) +".out", "r").read().split('\n')
         for i in range(secs):
             idle = float(util_str_list[i].split(',')[3].split()[-2])
             cpu_util_list.append(round(100.0 -idle, 3))
         start_point = int(len(cpu_util_list)*0.2)
         end_point = int(len(cpu_util_list)*0.8)
         cpu_util = sum(cpu_util_list[start_point:end_point])/(end_point-start_point)
-        os.system("rm -rf "+args.this_dir+"/profiling_cpu_"+str(cur_pid)+".out")
-        # print(args.this_dir+"/profiling_cpu_"+str(cur_pid)+".out")
+        os.system("rm -rf "+args.profile_dir+"/profiling_cpu_"+str(cur_pid)+".out")
+        os.system("rm -rf "+args.profile_dir+"/*"+str(cur_pid)+".xml")
+        # print(args.profile_dir+"/profiling_cpu_"+str(cur_pid)+".out")
 
         # 计算IO速度
         if itertime!=0:
@@ -195,6 +196,7 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
+    args.profile_dir = args.this_dir.replace('workloads','tmp/job')
     hvd.init()
     torch.manual_seed(args.seed)
     if args.cuda:
@@ -221,7 +223,9 @@ if __name__ == '__main__':
         model0 = get_model(0, args, sargs0)
         tt = time.time()
         model0.prepare(hvd)
-        print(f'{sargs0["model_name"]} load time: {time.time()-tt}')
+        if hvd.rank()==0:                       # 第一个进程
+            print(f'{sargs0["model_name"]} load time: {time.time()-tt}')
+            trainer.model_load_time(time.time()-tt)
         num_job += 1
 
     train()

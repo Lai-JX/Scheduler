@@ -939,7 +939,7 @@ class _Cluster(object):
                 return False
 
             switch = self.switch_list[placement['switch']]
-            if 'antman' in FLAGS.schedule:
+            if 'antman' in FLAGS.schedule or FLAGS.scheme == 'merge':
                 ret = switch.release_job_res(placement['nodes'], job['priority'], job['job_idx'], job['gpu_util'])
             else:
                 ret = switch.release_job_res(placement['nodes'], 0, job['job_idx'], 1)
