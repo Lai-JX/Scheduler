@@ -195,12 +195,14 @@ class Worker(object):
         cpu_util = sum(cpu_util_list)/len(cpu_util_list)
         self._logger.info(f'cpu util: {cpu_util_list}, {cpu_util}')
         
-        io_util_list = []
+        io_util_list, io_read = [], 0
         util_str_list = open("./tmp/profiling_" + str(self._worker_id) + "_disk.out", "r").read().split('\n')
-        for i in range(secs):
-            kB_read = float(util_str_list[i].split()[2])
-            io_util_list.append(kB_read)
-        io_read = sum(io_util_list[1:])/(len(io_util_list)-1)
+        if len(util_str_list) > 1:
+            for i in range(secs):
+                print(util_str_list,util_str_list[i])
+                kB_read = float(util_str_list[i].split()[2])
+                io_util_list.append(kB_read)
+            io_read = sum(io_util_list[1:])/(len(io_util_list)-1)
         self._logger.info(f'io read: {io_util_list} {io_read}')
 
 

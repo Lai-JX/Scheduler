@@ -72,7 +72,8 @@ sjf-ffs-m:
 
 
 sjf-test:
-	rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm ./tmp/*.out; rm ./tmp/*.xml; rm ./*.out; rm ./*.xml; ./kill.sh; ./run.sh 127.0.0.1 9002 9013 1 sjf-test
-
+	rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm ./tmp/*.out; rm ./tmp/*.xml; rm ./*.out; rm ./*.xml; ./kill.sh; ./run.sh 10.244.17.22 9002 9013 1 sjf-test
+sjf-test1:
+	./kill.sh; ./run.sh 10.244.17.22 9002 9013 2 sjf-test
 
 

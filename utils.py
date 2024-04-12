@@ -5,6 +5,7 @@ import subprocess
 import flags 
 import logging
 import math
+import json
 import os
 import xml.etree.ElementTree as ET
 from contextlib import closing
@@ -105,6 +106,12 @@ def find_free_port():
         s.bind(('', 0))
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s.getsockname()[1]
+    
+def dict_to_json(dict_, json_path):
+    print(dict_)
+    _json = json.dumps(dict_,sort_keys=False, indent=4, separators=(',', ': '))
+    f = open(f'{json_path}', 'w')
+    f.write(_json)
     
 # 算差分
 def calDiff(data):

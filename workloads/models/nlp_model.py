@@ -180,10 +180,10 @@ class NLPModel:
         config = config_class()
 
         if self.sargs["model_name"] == 'bert':
-            self.tokenizer = AutoTokenizer.from_pretrained("/root/nfs-share/Muri_exp/workloads/models/nlp/bert-base-uncased")
+            self.tokenizer = AutoTokenizer.from_pretrained("/workspace/graduation_project/Scheduler/workloads/models/nlp/bert-base-uncased")
         else:
             # self.tokenizer = AutoTokenizer.from_pretrained(self.sargs["model_name"])
-            self.tokenizer = AutoTokenizer.from_pretrained("/root/nfs-share/Muri_exp/workloads/models/nlp/gpt2")
+            self.tokenizer = AutoTokenizer.from_pretrained("/workspace/graduation_project/Scheduler/workloads/models/nlp/gpt2")
         
         # print(self.tokenizer.model_max_length)
         # self.args.block_size = self.tokenizer.max_len_single_sentence     # ljx

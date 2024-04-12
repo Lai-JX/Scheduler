@@ -1,2 +1,2 @@
-num_switch,num_node_p_switch,num_gpu_p_node,num_cpu_p_node,mem_p_node
-1,2,2,24,350
+num_switch,num_node_p_switch,num_gpu_p_node,num_cpu_p_node,mem_p_gpu
+1,2,8,128,49140

@@ -19,6 +19,7 @@ class Controller(object):
         self._workers = []
 
         self.done_queue = queue.Queue()
+        self.done_queue_lock = threading.Lock()
 
         self._server_for_worker = self.make_server_for_worker(port)
         
@@ -26,7 +27,7 @@ class Controller(object):
         print("ljx: Controller wait finish!\n")
         self._jump_time = 0
         self._start_time = time.time()
-
+    
     def set_start_time(self):
         self._start_time = time.time()
 
@@ -94,11 +95,11 @@ class Controller(object):
     
 
     def _done_impl(self, job_id, job_counter, worker_id, gpus, returncode) -> bool:
+        self.done_queue_lock.acquire()
         success = True
-
         self.done_queue.put((self.get_time(), job_id, worker_id, gpus, returncode))
         self._logger.info(f'controller, done, {worker_id}, {job_id} - {job_counter} @ {worker_id}, {gpus}, return code: {returncode}')
-
+        self.done_queue_lock.release()
         return success
 
     

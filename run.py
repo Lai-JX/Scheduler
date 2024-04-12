@@ -16,7 +16,7 @@ import numpy as np
 import utils
 import flags
 import jobs
-import cluster
+from cluster import cluster
 import log
 # import lp     # 暂时注释，'balance' 对应的放置策略
 from matching import Blossom_Same, _Packing
@@ -66,8 +66,8 @@ flags.DEFINE_integer('num_gpu_p_node', 8,
                 '''Part of cluster spec: the number of gpus on each node, default is 8''')
 flags.DEFINE_integer('num_cpu_p_node', 64,
                 '''Part of cluster spec: the number of cpus on each node, default is 64''')
-flags.DEFINE_integer('mem_p_node', 256,
-                '''Part of cluster spec: memory capacity on each node, default is 128''')
+flags.DEFINE_integer('mem_p_gpu', 49140,
+                '''Part of cluster spec: memory capacity on each gpu(M), default is 49140''')
 flags.DEFINE_string('cluster_spec', None,
                 '''Part of cluster spec: cluster infra spec file, 
                 this file will overwrite the specs from num_switch, num_node_p_switch, and num_gpu_p_node
@@ -162,7 +162,7 @@ def parse_cluster_spec():
             return
         if 'num_cpu_p_node' not in keys:
             return
-        if 'mem_p_node' not in keys:
+        if 'mem_p_gpu' not in keys:
             return
         
         ''' there should be only one line remaining'''
@@ -175,14 +175,14 @@ def parse_cluster_spec():
             FLAGS.num_node_p_switch = int(row['num_node_p_switch'])
             FLAGS.num_gpu_p_node = int(row['num_gpu_p_node'])
             FLAGS.num_cpu_p_node = int(row['num_cpu_p_node'])
-            FLAGS.mem_p_node = int(row['mem_p_node'])
+            FLAGS.mem_p_gpu = int(row['mem_p_gpu'])
         fd.close()
 
     utils.print_fn("num_switch: %d" % FLAGS.num_switch)
     utils.print_fn("num_node_p_switch: %d" % FLAGS.num_node_p_switch)
     utils.print_fn("num_gpu_p_node: %d" % FLAGS.num_gpu_p_node)
     utils.print_fn("num_cpu_p_node: %d" % FLAGS.num_cpu_p_node)
-    utils.print_fn("mem_p_node: %d" % FLAGS.mem_p_node)
+    utils.print_fn("mem_p_gpu: %d" % FLAGS.mem_p_gpu)
 
     '''init infra'''
     CLUSTER.init_infra()
@@ -1738,6 +1738,8 @@ def main():
         sjf_sim_jobs(scheduler)
     elif FLAGS.schedule == 'sjf-ffs' or FLAGS.schedule == 'sjf-ffs-m':                                                           # sjf-ffs
         sjf_ffs_jobs(scheduler)
+    elif FLAGS.schedule == 'bsbf' or FLAGS.schedule == 'bsbf-m':                                                           # sjf-ffs
+        sjf_bsbf_jobs(scheduler)
     # elif FLAGS.schedule == 'shortest':                                                        # SRTF
     #     shortest_first_sim_jobs(scheduler)
     # elif FLAGS.schedule == 'shortest-gpu':                                                  # SRSF

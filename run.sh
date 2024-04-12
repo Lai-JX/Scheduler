@@ -26,8 +26,8 @@ service ssh restart     # 使ssh配置生效，方便使用mpirun
 
 export schedules_all=$@         # ljx
 shift
-jobs=('cluster_trace_20')
-setups=("n1g8")
+jobs=('cluster_trace_12')
+setups=("n2g8")
 packing_nums=("4")
 schedule_intervals=("60")          # 调度间隔
 
@@ -71,7 +71,7 @@ for setup in ${setups[@]};do                                                    
                             # start scheduler for the main node
                             echo -e '\nstart scheduler for the main node\n'
                             rm $THIS_DIR/$log_name/*.log
-                            python -u $THIS_DIR/run.py --cluster_spec=$THIS_DIR/${cluster_spec} --print --scheme=${p} --trace_file=$THIS_DIR/${job_file} --schedule=${s} --log_path=$THIS_DIR/${log_name} --packing_num ${packing_num} --schedule_interval ${schedule_interval} >$THIS_DIR/${log_name}/scheduler.out &   # ljx
+                            python -u $THIS_DIR/run.py --cluster_spec=$THIS_DIR/${cluster_spec} --print --scheme=${p} --trace_file=$THIS_DIR/${job_file} --schedule=${s} --log_path=$THIS_DIR/${log_name} --packing_num ${packing_num} --schedule_interval ${schedule_interval}  &   # ljx >$THIS_DIR/${log_name}/scheduler.out
                             sleep 10s
                         else
                             # sleep 6m    # ljx 

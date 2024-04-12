@@ -8,7 +8,7 @@ import math
 
 import utils
 import flags 
-import cluster 
+from cluster import cluster 
 import jobs
 import time
 

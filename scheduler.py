@@ -1,6 +1,6 @@
 from runtime.rpc import scheduler_server, scheduler_client
 from controller import Controller
-from cluster import CLUSTER
+from cluster.cluster import CLUSTER
 
 import argparse
 import threading
