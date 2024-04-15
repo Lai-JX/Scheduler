@@ -35,9 +35,9 @@ class Task(object):
         # return utils.find_free_port()
     def set_hostfile(self):
         # 配置
-        hosts = {0:'job-ljx-a72f6-mvfmf',
-                 1:'job-ljx-eef05-h5hph'}   # node_id:hostname
-        ssh_ports = {0:22,1:22}                  # node_id:ssh_port
+        hosts = {0:'ibgpu1',
+                 1:'ibgpu5'}   # node_id:hostname
+        ssh_ports = {0:6667,1:6667}                  # node_id:ssh_port
         gpu_per_node = 8
 
         hostfile_list = []

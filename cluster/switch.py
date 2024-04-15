@@ -23,6 +23,9 @@ class _Switch(object):
         self.mem_p_gpu = mem_p_gpu
         self.id = id
         self.node_list = list()
+        self.node_map = {}
+        self.con_times = 0      # used by bsbf
+        self.seq_times = 0      # used by bsbf 
         utils.print_fn('  Switch[%d] has %d nodes' % (id, num_node))
 
     def add_nodes(self, num_node=0, num_gpu_p_node=0, num_cpu_p_node=0, mem_p_gpu=0):
@@ -36,6 +39,7 @@ class _Switch(object):
             tmp_n = _Node(n, self.num_gpu_p_node, self.num_cpu_p_node, self.mem_p_gpu)
             tmp_n.add_gpus()
             self.node_list.append(tmp_n)
+            self.node_map[n] = tmp_n
 
 
 
@@ -243,6 +247,200 @@ class _Switch(object):
             ret = self.try_single_node_alloc(job)
 
         return ret
+    
+    def merge_alloc_res(self, job):            
+        '''
+        一定会有placement
+        # cpu is enough
+        '''
+        need_gpu = job['num_gpu']
+        selected_gpus = []
+        # 节点 排序
+        sorted_nodes = sorted(self.node_list, key=lambda x: (x.workload))       # 按照节点上job数量进行排序
+        # 筛选gpu
+        gpus = list()
+        for node in sorted_nodes:
+            gpus.extend([gpu for gpu in node.gpu_list if gpu.free_mem >= job['model']['mem'] and len(gpu.get_job_list()) <= 1])
+
+        gpus_hp, gpus_lp = list(), list()
+        for gpu in gpus:
+            if len(gpu.get_job_list()) == 0:
+                gpus_hp.append(gpu)
+            else:
+                gpus_lp.append(gpu)
+
+        if len(gpus_hp) >= need_gpu:
+            selected_gpus = gpus_hp[:need_gpu]
+        elif len(gpus_hp) + len(gpus_lp) >= need_gpu:
+            selected_gpus = gpus_hp + gpus_lp[:need_gpu-len(gpus_hp)]
+        if selected_gpus == []:
+            return False
+        
+        selected_gpus = sorted(selected_gpus, key=lambda x: (x.node_id, x.idx))
+        print('selected_gpus:',[gpu.gpu_id for gpu in selected_gpus])
+        node_gpu = {}               # {node_id:[gpu,gpu...]}
+        for gpu in selected_gpus:
+            if gpu.node_id not in node_gpu:
+                node_gpu[gpu.node_id] = []
+            node_gpu[gpu.node_id].append(gpu)
+
+        # 分配
+        node_list = []
+        for node_id,gpu_list in node_gpu.items():                  # 获取各个节点分配的资源
+            need_gpu = len(gpu_list)
+            need_cpu = int(need_gpu * 4) # worker:2, ps:4
+            node = self.node_map[node_id]
+            node.alloc_job_res(need_cpu, job['model']['mem'], gpu_list, job)
+            node_dict = dict()
+            node_dict['id'] = node_id
+            node_dict['num_gpu'] = need_gpu
+            node_dict['num_cpu'] = need_cpu
+            node_dict['job_per_gpu_mem'] = job['model']['mem']
+            node_dict['gpu_list'] = gpu_list
+
+            node_dict['tasks'] = list()
+            node_list.append(node_dict)
+
+        JOBS.create_multi_nodes_placement(job, self.id, node_list)
+            # JOBS.create_single_node_placement(job, self.id, node_id, need_gpu, need_cpu, job['model']['mem'], gpu_list)
+            # JOBS.create_single_node_placement(job, self.id, node_key, need_gpu, need_cpu, JOBS.worker_mem, tmp_node_dict[node_key]) # 不考虑network？
+            # self.node_list[node_key].free_mem -= JOBS.worker_mem
+        # job['remaining_gpu'] = 0
+        self.print_switch_status()
+        return True
+    def bsbf_get_interf(self, job1, job2, with_mps=False):
+        job1_name = JOBS.job_name_map[job1['model_name']]
+        job2_name = JOBS.job_name_map[job2['model_name']]
+        job1_ngpu, job2_ngpu = str(job1['num_gpu']), str(job2['num_gpu'])
+        res = JOBS.interference[job1_name][job2_name][job1_ngpu]       # batchsize
+        # print(job1_name,job2_name,job2_ngpu)
+        if not with_mps:
+            return res[0]
+        else:
+            return res[1]
+
+    def share_check(self, job_a, job_b, with_mps=False):        # @ljx job_a:new_job     job_b:exist_job
+        interference_a = self.bsbf_get_interf(job_a, job_b, with_mps)
+        interference_b = self.bsbf_get_interf(job_b, job_a, with_mps)
+
+        iter_b = job_b["remaining_iterations"]
+        iter_time_b = job_b["iteration_time"]
+        etc_b = iter_b * iter_time_b
+        # _xi_b = 1.0 / (1.0 - interference_b)
+        _xi_b = interference_b
+        etc_b_hat = _xi_b * (iter_b * iter_time_b)
+        
+        iter_a = job_a["remaining_iterations"]
+        iter_time_a = job_a["iteration_time"]
+        etc_a = iter_a * iter_time_a
+        # _xi_a = 1.0 / (1.0 - interference_a)
+        _xi_a = interference_a
+        etc_a_hat = _xi_a * (iter_a * iter_time_a)
+        
+        def compute_t_con():
+            if etc_a_hat >= etc_b_hat:
+                return 0.5 * etc_a + (1 - 1 / (2 * _xi_a)) * etc_b_hat
+            else:
+                return 0.5 * etc_b + (1 - 1 / (2 * _xi_b)) * etc_a_hat
+
+        t_con = compute_t_con()
+        t_seq = etc_b + 0.5 * etc_a
+        flag = False
+        if t_con < t_seq:
+            self.con_times += 1
+            flag = True
+        else:
+            self.seq_times += 1
+            flag = False
+        return flag, t_con
+    
+    def bsbf_alloc_res(self, job=None,with_mps=False):            
+        '''
+        一定会有placement
+        # cpu is enough
+        '''
+        need_gpu = job['num_gpu']
+        selected_gpus = []
+        # 节点 排序
+        sorted_nodes = sorted(self.node_list, key=lambda x: (x.workload))       # 按照节点上job数量进行排序
+        # 筛选gpu
+        gpus = list()
+        for node in sorted_nodes:
+            gpus.extend([gpu for gpu in node.gpu_list if gpu.free_mem >= job['model']['mem'] and len(gpu.get_job_list()) <= 1])
+
+        gpus_hp, gpus_lp = list(), list()
+        for gpu in gpus:
+            if len(gpu.get_job_list()) == 0:
+                gpus_hp.append(gpu)
+            else:
+                gpus_lp.append(gpu)
+
+        if len(gpus_hp) >= need_gpu:
+            selected_gpus = gpus_hp[:need_gpu]
+        elif len(gpus_hp) + len(gpus_lp) >= need_gpu:
+            share_job_time = {}     # {job_idx:t_con}
+            no_share_job = []
+            tmp_selected_gpus = []
+            flag = False
+            for gpu in gpus_lp:
+                for j in gpu.get_job_list():
+                    if j["job_idx"] in share_job_time or j in no_share_job:
+                        break
+                    share_flag, t_con = self.share_check(job,j,with_mps)
+                    if share_flag:
+                        share_job_time[j["job_idx"]] = t_con
+                    else:
+                        no_share_job.append(j)
+            share_job_time = dict(sorted(share_job_time.items(), key=lambda x: x[1]))
+            for j in share_job_time.keys():
+                for gpu in gpus_lp:
+                    if gpu in tmp_selected_gpus:
+                        continue
+                    job_idx_list = [job['job_idx'] for job in gpu.get_job_list()]
+                    if j in job_idx_list:
+                        tmp_selected_gpus.append(gpu)
+                    if len(tmp_selected_gpus) + len(gpus_hp) >= need_gpu:
+                        flag = True
+                        break
+                if flag:
+                    break
+            if flag:
+                selected_gpus = gpus_hp + tmp_selected_gpus
+        if selected_gpus == []:
+            return False
+        
+        selected_gpus = sorted(selected_gpus, key=lambda x: (x.node_id, x.idx))
+        print('selected_gpus:',[gpu.gpu_id for gpu in selected_gpus])
+        node_gpu = {}               # {node_id:[gpu,gpu...]}
+        for gpu in selected_gpus:
+            if gpu.node_id not in node_gpu:
+                node_gpu[gpu.node_id] = []
+            node_gpu[gpu.node_id].append(gpu)
+
+        # 分配
+        node_list = []
+        for node_id,gpu_list in node_gpu.items():                  # 获取各个节点分配的资源
+            need_gpu = len(gpu_list)
+            need_cpu = int(need_gpu * 4) # worker:2, ps:4
+            node = self.node_map[node_id]
+            node.alloc_job_res(need_cpu, job['model']['mem'], gpu_list, job)
+            node_dict = dict()
+            node_dict['id'] = node_id
+            node_dict['num_gpu'] = need_gpu
+            node_dict['num_cpu'] = need_cpu
+            node_dict['job_per_gpu_mem'] = job['model']['mem']
+            node_dict['gpu_list'] = gpu_list
+
+            node_dict['tasks'] = list()
+            node_list.append(node_dict)
+
+        JOBS.create_multi_nodes_placement(job, self.id, node_list)
+            # JOBS.create_single_node_placement(job, self.id, node_id, need_gpu, need_cpu, job['model']['mem'], gpu_list)
+            # JOBS.create_single_node_placement(job, self.id, node_key, need_gpu, need_cpu, JOBS.worker_mem, tmp_node_dict[node_key]) # 不考虑network？
+            # self.node_list[node_key].free_mem -= JOBS.worker_mem
+        # job['remaining_gpu'] = 0
+        self.print_switch_status()
+        return True
 
     def add_job_gpu_util(self, job):
         for placement in job['placements']:
@@ -569,6 +767,7 @@ class _Switch(object):
             job['remaining_gpu'] = 0
             ret = True
         return ret
+    
 
     # not used
     def release_gpus(self, nodes):
@@ -606,3 +805,9 @@ class _Switch(object):
                 return False
 
         return True
+    
+    def print_switch_status(self):
+        for node in self.node_list:
+            print(f"node id:{node.id}")
+            for gpu in node.gpu_list:
+                print(f'  gpu {gpu.gpu_id}: {[job["job_idx"] for job in gpu.job_list]}')

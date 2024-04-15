@@ -449,6 +449,23 @@ class _Cluster(object):
             else:
                 continue
         return False
+    def merge_placement(self, job):
+        for switch in self.switch_list:
+            ret = switch.merge_alloc_res(job)    # ljx  gpu_util_upper=1.0
+            if ret == True:
+                return True
+            else:
+                continue
+        return False
+    
+    def bsbf_placement(self, job=None,with_mps=False):
+        for switch in self.switch_list:
+            ret = switch.bsbf_alloc_res(job,with_mps)    # ljx  gpu_util_upper=1.0
+            if ret == True:
+                return True
+            else:
+                continue
+        return False
 
 
     def random_placement(self, job):    
@@ -939,7 +956,7 @@ class _Cluster(object):
                 return False
 
             switch = self.switch_list[placement['switch']]
-            if 'antman' in FLAGS.schedule or FLAGS.scheme == 'merge':
+            if 'antman' in FLAGS.schedule:
                 ret = switch.release_job_res(placement['nodes'], job['priority'], job['job_idx'], job['gpu_util'])
             else:
                 ret = switch.release_job_res(placement['nodes'], job)

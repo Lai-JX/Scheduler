@@ -26,8 +26,8 @@ service ssh restart     # 使ssh配置生效，方便使用mpirun
 
 export schedules_all=$@         # ljx
 shift
-jobs=('cluster_trace_12')
-setups=("n2g8")
+jobs=('cluster_trace_20')
+setups=("n1g8")
 packing_nums=("4")
 schedule_intervals=("60")          # 调度间隔
 
@@ -39,6 +39,8 @@ if [ ${schedule[0]} == 'sjf'  ] || [ ${schedule[0]} == 'fifo' ] || [ ${schedule[
     placement=('yarn')
 elif [ ${schedule[0]} == 'sjf-ffs'  ] || [ ${schedule[0]} == 'sjf-ffs-m' ]; then
     placement=('merge')
+elif [ ${schedule[0]} == 'sjf-bsbf'  ] || [ ${schedule[0]} == 'sjf-bsbf-m'  ] || [ ${schedule[0]} == 'sjf-bsbf-no-preempt-m'  ]; then
+    placement=('bsbf')    
 fi
 # placement=('mps' 'mps3')
 echo 'schedule:'${schedule[@]}
@@ -71,7 +73,7 @@ for setup in ${setups[@]};do                                                    
                             # start scheduler for the main node
                             echo -e '\nstart scheduler for the main node\n'
                             rm $THIS_DIR/$log_name/*.log
-                            python -u $THIS_DIR/run.py --cluster_spec=$THIS_DIR/${cluster_spec} --print --scheme=${p} --trace_file=$THIS_DIR/${job_file} --schedule=${s} --log_path=$THIS_DIR/${log_name} --packing_num ${packing_num} --schedule_interval ${schedule_interval}  &   # ljx >$THIS_DIR/${log_name}/scheduler.out
+                            python -u $THIS_DIR/run.py --cluster_spec=$THIS_DIR/${cluster_spec} --print --scheme=${p} --trace_file=$THIS_DIR/${job_file} --schedule=${s} --log_path=$THIS_DIR/${log_name} --packing_num ${packing_num} --schedule_interval ${schedule_interval} >$THIS_DIR/${log_name}/scheduler.out &   # ljx >$THIS_DIR/${log_name}/scheduler.out
                             sleep 10s
                         else
                             # sleep 6m    # ljx 

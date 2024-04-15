@@ -99,6 +99,12 @@ class _TFJobs(object):
         self.running_jobs = list() # running
         self.completed_jobs = list()
 
+        self.job_name_map = {'resnet18':'ResNet-18', 'shufflenet_v2_x1_0':'ShuffleNet-v2', 'vgg19':'VGG19', 'vgg16':'VGG16', 'dqn':'DQN', 'a2c':'A2C', 'bert':'BERT', 'gpt2':'GPT2'}
+
+        # job itertime and interference
+        self.itertime = utils.json_to_dict('./trace-data/itertime.json')
+        self.interference = utils.json_to_dict('./trace-data/ratio.json')
+
         # self.migratable_jobs = list()
         # self.num_queue = 3
         # self.queues = [list() for i in range(self.num_queue)]     # dlas
@@ -207,7 +213,7 @@ class _TFJobs(object):
         # else:
         job_dict['submit_time'] /= 1000
         job_dict['duration'] /= 1000
-        job_dict['iteration_time'] /= 1000
+        self.set_itertime(job_dict)
         job_dict['tput']  = 1/job_dict['iteration_time']
     
         # if 'batch_size' not in job_dict:
@@ -315,8 +321,15 @@ class _TFJobs(object):
         #         self.gpu_job[num_gpu] = self.g_job(num_gpu)
 
         #     self.gpu_job[num_gpu].total_job += 1
-        print(job_dict)
+        # print(job_dict)
         # utils.dict_to_json(job_dict,f'{job_dict["job_id"]}.json')
+    def set_itertime(self, job_dict):
+        tmp_model_name = self.job_name_map[job_dict['model_name']]
+        tmp_num_gpu = str(job_dict['num_gpu'])
+        if tmp_model_name in self.itertime and tmp_num_gpu in self.itertime[tmp_model_name]:
+            job_dict['iteration_time'] = self.itertime[tmp_model_name][tmp_num_gpu]
+        else:
+            job_dict['iteration_time'] /= 1000
 
     def print_all_job_size_info(self):
         '''        
@@ -413,7 +426,7 @@ class _TFJobs(object):
         for job in self.job_list:
             max_submit_time = job['submit_time'] if job['submit_time'] > max_submit_time else max_submit_time
         for job in self.job_list:
-            job['submit_time'] = job['submit_time'] / max_submit_time * 300 - 160     # 将时间缩放到半小时内 - 240  - 890
+            job['submit_time'] = job['submit_time'] / max_submit_time * 600 - 160     # 将时间缩放到半小时内 - 240  - 890
 
         self.job_list.sort(key = lambda e:e.__getitem__('submit_time'))
         utils.print_fn('   Jobs are sorted with their start time')

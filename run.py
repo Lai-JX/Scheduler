@@ -1730,16 +1730,22 @@ def main():
     JOBS.prepare_job_start_events()                                     # 遍历所有job，将所有time添加到JOBS.job_events(sort events based on their submit time), 并将job加到对应的start_jobs列表中 every job has been in EVENT status
 
     # sim_job_events()
-    if FLAGS.schedule == 'fifo':                                                           # fifo
+    if FLAGS.schedule == 'fifo':                                                                # fifo
         fifo_sim_jobs(scheduler)
-    elif FLAGS.schedule == 'sjf':                                                           # shortestf first
+    elif FLAGS.schedule == 'sjf':                                                               # shortestf first
         sjf_sim_jobs(scheduler)
-    elif FLAGS.schedule == 'sjf-test':                                                           # shortestf first
+    elif FLAGS.schedule == 'sjf-test':                                                          # shortestf first
         sjf_sim_jobs(scheduler)
-    elif FLAGS.schedule == 'sjf-ffs' or FLAGS.schedule == 'sjf-ffs-m':                                                           # sjf-ffs
+    elif FLAGS.schedule == 'sjf-ffs' or FLAGS.schedule == 'sjf-ffs-m':                          # sjf-ffs
         sjf_ffs_jobs(scheduler)
-    elif FLAGS.schedule == 'bsbf' or FLAGS.schedule == 'bsbf-m':                                                           # sjf-ffs
+    elif FLAGS.schedule == 'sjf-bsbf':                                                          # sjf-bsbf
         sjf_bsbf_jobs(scheduler)
+    elif FLAGS.schedule == 'sjf-bsbf-m':                                                        # sjf-bsbf-m
+        sjf_bsbf_jobs(scheduler,with_mps=True)
+    elif FLAGS.schedule == 'sjf-bsbf-no-preempt':                                               # sjf-bsbf-no-preempt
+        sjf_bsbf_no_preempt(scheduler)
+    elif FLAGS.schedule == 'sjf-bsbf-no-preempt-m':                                             # sjf-bsbf-no-preempt-m
+        sjf_bsbf_no_preempt(scheduler,with_mps=True)
     # elif FLAGS.schedule == 'shortest':                                                        # SRTF
     #     shortest_first_sim_jobs(scheduler)
     # elif FLAGS.schedule == 'shortest-gpu':                                                  # SRSF

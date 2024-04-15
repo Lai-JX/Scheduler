@@ -18,40 +18,44 @@ class _Node(object):
         self.mem_p_gpu = mem_p_gpu
 
         self.gpu_list = []
-        #network load: can be bw, or the amount of traffic
-        # in and out should be the same
-        # self.network_in = 0
-        # self.network_out = 0
 
-        
-        # self.free_mem = gpu_mem
-
-        #node class for gandiva
         self.job_gpu = 0
         self.num_jobs = 0
         # self.gpu_job_list = [{0:[], 1:[]} for i in range(self.num_gpu)]
-        # self.gpu_util_list = [0.0 for i in range(self.num_gpu)]         # 各个GPU的已使用的显存
+        # self.gpu_util_list = [0.0 for i in range(self.num_gpu)]         # deprecated, add GPU class
         self.gpu_job_list = None
         self.gpu_util_list = None         # 各个GPU的已使用的显存
 
         utils.print_fn('    Node[%d] has %d gpus, %d cpus, %d M memory per gpu' % (id, num_gpu, num_cpu, mem_p_gpu))
     
-    # def init_node(self, num_gpu=0, num_cpu=0, mem_p_gpu=0):
-    #     if num_gpu != 0:
-    #         self.num_gpu = num_gpu
-    #         self.free_gpus = num_gpu
-    #     if num_cpu != 0:
-    #         self.num_cpu = num_cpu
-    #         self.free_cpus = num_cpu
-    #     if mem_p_gpu != 0:
-    #         self.mem_p_gpu = mem_p_gpu
-    #     self.gpu_job_list = [{0:[], 1:[]} for i in range(self.num_gpu)]
-    #     self.gpu_util_list = [0.0 for i in range(self.num_gpu)]
+    def init_node(self, num_gpu=0, num_cpu=0, mem_p_gpu=0):
+        if num_gpu != 0:
+            self.num_gpu = num_gpu
+        if num_cpu != 0:
+            self.num_cpu = num_cpu
+            self.free_cpus = num_cpu
+        if mem_p_gpu != 0:
+            self.mem_p_gpu = mem_p_gpu
+        # self.gpu_job_list = [{0:[], 1:[]} for i in range(self.num_gpu)]
+        # self.gpu_util_list = [0.0 for i in range(self.num_gpu)]
 
-    #     self.add_gpus(self.num_gpu)        
-    #     self.add_cpus(self.num_gpu)        
+        self.set_gpus(self.num_gpu)        
+        # self.add_cpus(self.num_gpu)    
 
+    @property
+    def workload(self):
+        job_set = set()
+        for gpu in self.gpu_list:
+            for job in gpu.get_job_list():
+                job_set.add(job['job_idx'])
+        return len(job_set)   
 
+    ''' GPU  '''
+    def set_gpus(self):
+        self.gpu_list = []
+        for i in range(0, self.num_gpu):
+            tmp_g = _GPU(self.id, '%s-%s'%(str(self.id),str(i)),i,self.mem_p_gpu)
+            self.gpu_list.append(tmp_g)
     ''' GPU  '''
     def add_gpus(self):
         for i in range(0, self.num_gpu):

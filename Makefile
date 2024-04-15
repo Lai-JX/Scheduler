@@ -70,6 +70,14 @@ sjf-ffs:
 sjf-ffs-m:
 	rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm ./tmp/*.out; rm ./tmp/*.xml; rm ./*.out; rm ./*.xml; ./kill.sh; ./run.sh 127.0.0.1 9002 9013 1 sjf-ffs-m
 
+sjf-bsbf:
+	rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm ./tmp/*.out; rm ./tmp/*.xml; rm ./*.out; rm ./*.xml; ./kill.sh; ./run.sh 127.0.0.1 9002 9013 1 sjf-bsbf
+sjf-bsbf-m:
+	rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm ./tmp/*.out; rm ./tmp/*.xml; rm ./*.out; rm ./*.xml; ./kill.sh; ./run.sh 127.0.0.1 9002 9013 1 sjf-bsbf-m
+sjf-bsbf-no-preempt:
+	rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm ./tmp/*.out; rm ./tmp/*.xml; rm ./*.out; rm ./*.xml; ./kill.sh; ./run.sh 127.0.0.1 9002 9013 1 sjf-bsbf-no-preempt
+sjf-bsbf-no-preempt-m:
+	rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm ./tmp/*.out; rm ./tmp/*.xml; rm ./*.out; rm ./*.xml; ./kill.sh; ./run.sh 127.0.0.1 9002 9013 1 sjf-bsbf-no-preempt-m
 
 sjf-test:
 	rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm ./tmp/*.out; rm ./tmp/*.xml; rm ./*.out; rm ./*.xml; ./kill.sh; ./run.sh 10.244.17.22 9002 9013 1 sjf-test

@@ -108,10 +108,18 @@ def find_free_port():
         return s.getsockname()[1]
     
 def dict_to_json(dict_, json_path):
-    print(dict_)
+    # print(dict_)
     _json = json.dumps(dict_,sort_keys=False, indent=4, separators=(',', ': '))
     f = open(f'{json_path}', 'w')
     f.write(_json)
+    f.close()
+def json_to_dict(json_path):
+    # print(os.system('pwd'),json_path)
+    f = open(json_path, 'r')
+    dict_read = json.load(f)
+    # print(dict_read)
+    # print(type(dict_read))
+    return dict_read
     
 # 算差分
 def calDiff(data):

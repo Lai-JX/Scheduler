@@ -37,6 +37,9 @@ class _GPU(object):
 
         self.free_mem = self.gpu_mem     
         self.job_list = []   
+    
+    def get_job_list(self):
+        return self.job_list
 
 
 
