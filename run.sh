@@ -26,11 +26,11 @@ service ssh restart     # 使ssh配置生效，方便使用mpirun
 
 export schedules_all=$@         # ljx
 shift
-jobs=('trace_data_new_32')
+# jobs=('trace_data_new_32')
 # jobs=('trace_data_new1')
-# jobs=('cluster_trace_12')
-setups=("n4g8")
-schedule_intervals=("150")          # 调度间隔
+jobs=('cluster_trace_12')
+setups=("n1g8")
+schedule_intervals=("60")          # 调度间隔
 
 IFS=','
 read -ra schedulers <<< "$schedules_all"

@@ -15,7 +15,7 @@ ERROR
 # import numpy
 import math
 import utils
-import models
+from workloads import models_msg
 import csv
 import time
 import sys
@@ -134,7 +134,7 @@ class _TFJobs(object):
         #     job_dict['model'] = models.get_model_with_scale(job_dict['model_name'], job_dict['model_scale'])
         # else:
         #     utils.print_fn('Not enough model information to get the details')
-        job_dict['model'] = models.get_model(job_dict['model_name'])
+        job_dict['model'] = models_msg.get_model(job_dict['model_name'])
 
 
     def get_network_load(self, job_dict):
@@ -422,11 +422,11 @@ class _TFJobs(object):
         # self.job_list = tmp_list
         
         # ljx：缩放时间
-        # max_submit_time = 0.0
-        # for job in self.job_list:
-        #     max_submit_time = job['submit_time'] if job['submit_time'] > max_submit_time else max_submit_time
-        # for job in self.job_list:
-        #     job['submit_time'] = job['submit_time'] / max_submit_time * 300 -81     # 将时间缩放到半小时内 - 600
+        max_submit_time = 0.0
+        for job in self.job_list:
+            max_submit_time = job['submit_time'] if job['submit_time'] > max_submit_time else max_submit_time
+        for job in self.job_list:
+            job['submit_time'] = job['submit_time'] / max_submit_time * 300 -81     # 将时间缩放到半小时内 - 600
 
         self.job_list.sort(key = lambda e:e.__getitem__('submit_time'))
         utils.print_fn('   Jobs are sorted with their start time')
@@ -819,7 +819,8 @@ class _TFJobs(object):
         gpu_list = {}
         if not is_packing:
             ejob = [tmp_ejob]
-            while len(ejob)<FLAGS.multi_resource:
+            # while len(ejob)<FLAGS.multi_resource:
+            while len(ejob)<4:
                 ejob.append(None)
         else:
             ejob = tmp_ejob
@@ -840,30 +841,31 @@ class _TFJobs(object):
         job_name_list = [rjob['model_name'] if rjob!=None else '-1' for rjob in ejob]    # ljx: 根据workloads/run.sh，这里 '0' 应该改为 '-1'(其实关系不大，因为batch_size为0，模型不会被运行)
         batch_size_list = [rjob['batch_size'] if rjob!=None else 0 for rjob in ejob]
         # print(FLAGS.fast_forwarding)
-        if FLAGS.fast_forwarding>0:
-            iters_list0 = [rjob['remaining_iterations'] if rjob!=None else 0 for rjob in ejob]
-            iters_sorted = sorted(list(set(iters_list0)))
-            tmp_iter = 5
-            iters_list = [0,0,0,0]
-            num_jobs = sum([1 if rjob!=None else 0 for rjob in ejob])
-            for iters in iters_sorted:
-                if iters==0:
-                    continue
-                tmp_iter += int(FLAGS.fast_forwarding/num_jobs)
-                # tmp_iter += int(60/num_jobs)
-                for idx, iter0 in enumerate(iters_list0):
-                    if iter0 == iters:
-                        iters_list[idx] = tmp_iter      # 若iters_list0=[7447,7500,0,0]，则iters_list=[35,65,0,0](两个job)
-            last_iters = list(set(iters_list))
-            last_iters.sort()
-            # print('jobs, to_info:', last_iters)
-            if last_iters[0]==0:
-                del last_iters[0]
-            for rjob in ejob:
-                if rjob!=None:
-                    rjob['last_iters'] = last_iters
-        else:
-            iters_list = [rjob['remaining_iterations'] if rjob!=None else 0 for rjob in ejob]
+        # if FLAGS.fast_forwarding>0:
+        #     iters_list0 = [rjob['remaining_iterations'] if rjob!=None else 0 for rjob in ejob]
+        #     iters_sorted = sorted(list(set(iters_list0)))
+        #     tmp_iter = 5
+        #     iters_list = [0,0,0,0]
+        #     num_jobs = sum([1 if rjob!=None else 0 for rjob in ejob])
+        #     for iters in iters_sorted:
+        #         if iters==0:
+        #             continue
+        #         tmp_iter += int(FLAGS.fast_forwarding/num_jobs)
+        #         # tmp_iter += int(60/num_jobs)
+        #         for idx, iter0 in enumerate(iters_list0):
+        #             if iter0 == iters:
+        #                 iters_list[idx] = tmp_iter      # 若iters_list0=[7447,7500,0,0]，则iters_list=[35,65,0,0](两个job)
+        #     last_iters = list(set(iters_list))
+        #     last_iters.sort()
+        #     # print('jobs, to_info:', last_iters)
+        #     if last_iters[0]==0:
+        #         del last_iters[0]
+        #     for rjob in ejob:
+        #         if rjob!=None:
+        #             rjob['last_iters'] = last_iters
+        # else:
+        iters_list = [rjob['remaining_iterations'] if rjob!=None else 0 for rjob in ejob]
+        
         job_counter_list = [rjob['job_counter'] if rjob!=None else 0 for rjob in ejob]
         job_num = len(ejob)
         node_id_list = []

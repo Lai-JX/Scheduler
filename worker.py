@@ -25,7 +25,7 @@ class Worker(object):
         self._work_ip = worker_ip
         self._worker_port = worker_port
         self._worker_id = None
-        self._trace_name = trace_name
+        self._trace_name = trace_name       # job log dir
         self._this_dir = this_dir
         self._check_task_flag = True
         
