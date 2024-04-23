@@ -106,9 +106,9 @@ class _TFJobs(object):
         self.interference = utils.json_to_dict('./trace-data/ratio.json')
 
         # self.migratable_jobs = list()
-        # self.num_queue = 3
-        # self.queues = [list() for i in range(self.num_queue)]     # dlas
-        # self.queue_limit = [3250, 7200, 18000]
+        self.num_queue = 2
+        self.queues = [list() for i in range(self.num_queue)]     # dlas
+        self.queue_limit = [700,]
 
         # mem info in GB
         # self.worker_mem = 5
@@ -422,11 +422,11 @@ class _TFJobs(object):
         # self.job_list = tmp_list
         
         # ljx：缩放时间
-        max_submit_time = 0.0
-        for job in self.job_list:
-            max_submit_time = job['submit_time'] if job['submit_time'] > max_submit_time else max_submit_time
-        for job in self.job_list:
-            job['submit_time'] = job['submit_time'] / max_submit_time * 600 - 160     # 将时间缩放到半小时内 - 240  - 890
+        # max_submit_time = 0.0
+        # for job in self.job_list:
+        #     max_submit_time = job['submit_time'] if job['submit_time'] > max_submit_time else max_submit_time
+        # for job in self.job_list:
+        #     job['submit_time'] = job['submit_time'] / max_submit_time * 300 -81     # 将时间缩放到半小时内 - 600
 
         self.job_list.sort(key = lambda e:e.__getitem__('submit_time'))
         utils.print_fn('   Jobs are sorted with their start time')
@@ -823,8 +823,17 @@ class _TFJobs(object):
                 ejob.append(None)
         else:
             ejob = tmp_ejob
+
+        # if is_kill:
+        #     job_id_list = [rjob['job_idx'] if rjob!=None else -1 for rjob in ejob]
+        #     job_counter_list = [rjob['job_counter'] if rjob!=None else 0 for rjob in ejob]
+        #     jobinfo = JobInfo()                   
+        #     jobinfo.job_id.extend(job_id_list)
+        #     jobinfo.job_counter.extend(job_counter_list)
+        #     return jobinfo
+        
         if len(ejob[0]['placements'])!=1:
-            print(ejob[0])
+            print(len(ejob[0]['placements']),ejob[0])
         assert len(ejob[0]['placements'])==1    # 重新调度前job的placement会被清除，所以基本只会有一个placement
         placement = ejob[0]['placements'][0]
         job_id_list = [rjob['job_idx'] if rjob!=None else -1 for rjob in ejob]
@@ -862,14 +871,19 @@ class _TFJobs(object):
             node_id = node['id']
             node_id_list.append(node_id)
             assert node_id not in gpu_list
-            assert len(placement['nodes'])==1 or (len(placement['nodes'])>1 and len(node['gpu_list'])==8)       # ljx: 将8改为2，每个节点只有4个gpu
+            # assert len(placement['nodes'])==1 or (len(placement['nodes'])>1 and len(node['gpu_list'])==8)       # ljx: 将8改为2，每个节点只有4个gpu
             for gpu in node['gpu_list']:
                 if node_id not in gpu_list:
                     gpu_list[node_id] = str(gpu.idx)
                 else:
                     gpu_list[node_id] += f',{gpu.idx}'          # gpu_list={'node_id':gpu_list}
+        gpu_list_str=[]
+        for k,v in gpu_list.items():
+            gpu_list_str.append(str(k)+'-'+v)
+        gpu_list_str = "/".join(gpu_list_str)
         resumed_list = [True if rjob and rjob['resume'] > 0 else False for rjob in ejob]                                   # 是否为之前执行过的job
-        jobinfo = JobInfo(num=job_num, gpus=gpu_list[node_id_list[0]], num_gpu=ejob[0]['num_gpu'])
+        # jobinfo = JobInfo(num=job_num, gpus=gpu_list[node_id_list[0]], num_gpu=ejob[0]['num_gpu'])
+        jobinfo = JobInfo(num=job_num, gpus=gpu_list_str, num_gpu=ejob[0]['num_gpu'])                   # id0-gpu_list0/id1-gpu_list1/...
         jobinfo.node_id.extend(node_id_list)
         jobinfo.job_id.extend(job_id_list)
         jobinfo.job_name.extend(job_name_list)

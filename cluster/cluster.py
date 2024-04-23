@@ -51,6 +51,7 @@ class _Cluster(object):
                 8:self.node_g8, 12:self.node_g12, 16:self.node_g16, 24:self.node_g24, 32:self.node_g32, 
                 64:self.node_g64}
                 # 64:self.node_g64, 128:self.node_g128, 256:self.node_g256}
+        self.node_msg = utils.json_to_dict('./cluster/node_msg.json')
 
 
     def set_spec(self, num_switch=0, num_node_p_switch=0, num_gpu_p_node=0, num_cpu_p_node=0, mem_p_gpu=0):
@@ -451,7 +452,16 @@ class _Cluster(object):
         return False
     def merge_placement(self, job):
         for switch in self.switch_list:
-            ret = switch.merge_alloc_res(job)    # ljx  gpu_util_upper=1.0
+            ret = switch.merge_alloc_res(job) 
+            if ret == True:
+                return True
+            else:
+                continue
+        return False
+    
+    def merge_placement_consolidate(self, job):
+        for switch in self.switch_list:
+            ret = switch.merge_alloc_res_consolidate(job) 
             if ret == True:
                 return True
             else:
@@ -460,7 +470,16 @@ class _Cluster(object):
     
     def bsbf_placement(self, job=None,with_mps=False):
         for switch in self.switch_list:
-            ret = switch.bsbf_alloc_res(job,with_mps)    # ljx  gpu_util_upper=1.0
+            ret = switch.bsbf_alloc_res(job,with_mps)  
+            if ret == True:
+                return True
+            else:
+                continue
+        return False
+    
+    def bsbfs_placement(self, job=None,with_mps=False):
+        for switch in self.switch_list:
+            ret = switch.bsbf_alloc_res_consolidate(job,with_mps)    
             if ret == True:
                 return True
             else:
@@ -971,10 +990,10 @@ class _Cluster(object):
 
 
 CLUSTER = _Cluster()
-CLUSTER_TMP = _Cluster()
+# CLUSTER_TMP = _Cluster()
 
 
 _allowed_symbols = [
     'CLUSTER',
-    'CLUSTER_TMP'
+    # 'CLUSTER_TMP'
 ]

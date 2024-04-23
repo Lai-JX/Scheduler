@@ -3,8 +3,9 @@ from runtime.rpc_stubs.master_to_worker_pb2 import JobInfo
 import subprocess
 import os
 import utils
-
+from cluster import cluster
 port_count = -1
+CLUSTER = cluster.CLUSTER
 
 class Task(object):
     def __init__(self, job_info: JobInfo, scheduler_ip, trace_name, this_dir, model_path) -> None:
@@ -16,7 +17,7 @@ class Task(object):
         self._job_name = job_info.job_name          # list
         self._batch_size = job_info.batch_size      # list
         self._iterations = job_info.iterations      # list
-        self._gpus = job_info.gpus                  # 第一个node的gpu_list
+        self._gpus = job_info.gpus                  # 各个node的gpu_list
         self._scheduler_ip = scheduler_ip           # 即master_ip
         self._num_gpu = job_info.num_gpu            # 第一个job的gpu
         self._this_dir = this_dir
@@ -30,27 +31,45 @@ class Task(object):
         # return 9013 + 2*min(self._node_id) + int(self._gpus.split(',')[0])      # ljx 每个节点只有两个2个gpu，所以这里先改为2
         global port_count
         port_count += 1
-        return 9013 + (port_count % 90)                                           # ljx
+        return 9013 + (port_count % 70)                                           # ljx
     
         # return utils.find_free_port()
     def set_hostfile(self):
         # 配置
-        hosts = {0:'ibgpu1',
-                 1:'ibgpu5'}   # node_id:hostname
-        ssh_ports = {0:6667,1:6667}                  # node_id:ssh_port
+        node_msg = CLUSTER.node_msg
+        # hostname = {0:'haigpu1',
+        #             1:'haigpu5'}     # node_id:hostname
+        # hosts = {0:'ibgpu1',
+        #          1:'ibgpu5'}        # node_id:host
+        # ssh_ports = {0:6667,1:6667}                  # node_id:ssh_port
+        hostname = node_msg['hostname']
+        hosts = node_msg['hosts']
+        ssh_ports = node_msg['ssh_ports']
         gpu_per_node = 8
 
         hostfile_list = []
-        count = 0                           # 已分配的gpu数
-        for node_id in self._node_id:
-            gpu_to_allocate = self._num_gpu - count
-            if gpu_to_allocate < gpu_per_node:
-                hostfile_list.append(f'{hosts[node_id]} slots={gpu_to_allocate} port={ssh_ports[node_id]}')
-                count += gpu_to_allocate
-            else:
-                hostfile_list.append(f'{hosts[node_id]} slots={gpu_per_node} port={ssh_ports[node_id]}')
-                count += gpu_per_node
-        return hostfile_list
+        gpus_dict = {}
+        node_gpu_list = self._gpus.split("/")
+        for node_gpu in node_gpu_list:
+            tmp = node_gpu.split("-")
+            node_id = tmp[0]
+            gpus = tmp[1].split(",")
+            hostfile_list.append(f'{hosts[node_id]} slots={len(gpus)} port={ssh_ports[node_id]}\n')
+            gpus_dict[hostname[node_id]] = tmp[1]
+        return hostfile_list, gpus_dict
+
+
+        # hostfile_list = []
+        # count = 0                           # 已分配的gpu数
+        # for node_id in self._node_id:
+        #     gpu_to_allocate = self._num_gpu - count
+        #     if gpu_to_allocate < gpu_per_node:
+        #         hostfile_list.append(f'{hosts[node_id]} slots={gpu_to_allocate} port={ssh_ports[node_id]}')
+        #         count += gpu_to_allocate
+        #     else:
+        #         hostfile_list.append(f'{hosts[node_id]} slots={gpu_per_node} port={ssh_ports[node_id]}')
+        #         count += gpu_per_node
+        # return hostfile_list
 
 
 
@@ -84,23 +103,27 @@ class Task(object):
         cmd = bash_cmd.split()
 
         hostfile_dir = self._this_dir+'/workloads/hostfiles'
+        gpus_dir = self._this_dir+'/workloads/gpus'
         assert os.path.exists(hostfile_dir)
         print('self._node_id:',self._node_id)
-        hostfile_list = self.set_hostfile()         # 设置hostfile
+        hostfile_list, gpus_dict = self.set_hostfile()         # 设置hostfile
         
 
         ch = '-'
-        job_id_str = ch.join([str(x) for x in list(self._job_id)])
-        job_counter_str = ch.join([str(x) for x in list(self._job_counter)])
+        # job_id_str = ch.join([str(x) for x in list(self._job_id)])
+        # job_counter_str = ch.join([str(x) for x in list(self._job_counter)])
+        job_id_str, job_counter_str = self._job_id[0], self._job_counter[0]
         # print(self._iterations)
         with open(hostfile_dir+f'/hostfile-[{job_id_str}]-[{job_counter_str}]', 'w') as f:
             f.writelines(hostfile_list)
+        utils.dict_to_json(gpus_dict, gpus_dir+f'/gpu-[{job_id_str}]-[{job_counter_str}]')
+
         utils.print_ljx("task.run:hostfile_list:", hostfile_list)
         utils.print_ljx("log path after here:",self.log_path, '\n')
         utils.print_ljx('environ_dict["CUDA_VISIBLE_DEVICES"]',self._gpus)
         # exit(0)
         environ_dict = dict(os.environ)
-        environ_dict['CUDA_VISIBLE_DEVICES'] = self._gpus
+        # environ_dict['CUDA_VISIBLE_DEVICES'] = self._gpus
         # print(environ_dict)
         with open(self.log_path, 'w+') as f:
             self._handler = subprocess.Popen(

@@ -1,5 +1,6 @@
 import argparse
 from logging import root
+from statistics import mean
 import utils
 import threading
 import time
@@ -16,8 +17,8 @@ class Worker(object):
     def __init__(self, master_ip, master_port, worker_ip, worker_port, gpus: str, trace_name, this_dir, log_path) -> None:
         super().__init__()
 
-        self._logger = utils.make_logger(__name__, log_path+'/worker.log')
-        self._model_path = log_path.replace("results", "model")
+        self._logger = utils.make_logger(__name__, log_path)
+        self._model_path = log_path[:-12].replace("results", "model")
 
         self._master_ip = master_ip
         self._master_port = master_port
@@ -36,8 +37,10 @@ class Worker(object):
         self._server_for_master = self.make_server_for_master(self._worker_port)
         # time.sleep(60)
         self._tasks = dict()
+        self._tasks_lock = threading.Lock()
 
         self.register()
+        
     
 
     def register(self):
@@ -55,7 +58,7 @@ class Worker(object):
         while self._check_task_flag:
             finished_tasks = []
             error_tasks = []
-
+            self._tasks_lock.acquire()
             for (job_id, job_counter), (task, job_info) in self._tasks.items():
                 if task.return_code == None: # the pid of task is the pid of mpirun
                     continue
@@ -70,8 +73,8 @@ class Worker(object):
             
             for (job_id, job_counter) in finished_tasks: 
                 self._tasks.pop((job_id, job_counter))
-            
-            time.sleep(2)
+            self._tasks_lock.release()
+            time.sleep(1)
     
 
     def make_server_for_master(self, port: int):
@@ -99,7 +102,9 @@ class Worker(object):
         self._logger.info(f'job_info.node_id: {job_info.node_id}')
         task = Task(job_info, self._master_ip, self._trace_name, self._this_dir, self._model_path)
         cmd = task.run()
+        self._tasks_lock.acquire()
         self._tasks[(max(task._job_id), max(task._job_counter))] = (task, job_info)
+        self._tasks_lock.release()
 
         self._logger.info(f'{self._worker_id}, execute, {task._job_id} - {task._job_counter}, {task._gpus}, {" ".join(cmd)}')
 
@@ -111,11 +116,13 @@ class Worker(object):
     def _kill_impl(self, job_info) -> bool:
         job_id = max(job_info.job_id)
         job_counter = max(job_info.job_counter)
-
+        self._tasks_lock.acquire()
         if (job_id, job_counter) not in self._tasks:
+            self._tasks_lock.release()
             return False
 
         task, _ = self._tasks.pop((job_id, job_counter))
+        self._tasks_lock.release()
         task.terminate()
         task.wait()
         self._logger.info(f'{self._worker_id}, kill, {job_id} - {job_counter}, {job_info.gpus}')
@@ -136,21 +143,21 @@ class Worker(object):
         # prepare
         device_list = range(self._num_gpus)
         process_list = []
-        os.system("rm -rf ./tmp/profiling_*_*.xml")
-        os.system("rm -rf ./tmp/profiling_*_*.out")
+        os.system("rm -rf /root/tmp/profiling_*_*.xml")
+        os.system("rm -rf /root/tmp/profiling_*_*.out")
         self._logger.info(f'current path: {os.getcwd()}')
         # start subprocess
         # gpu
         for device in device_list:
-            filename = "./tmp/profiling_" + str(self._worker_id) + "_" +str(device) + ".xml"
+            filename = "/root/tmp/profiling_" + str(self._worker_id) + "_" +str(device) + ".xml"
             command = "exec nvidia-smi -q -i " + str(device) + " -x -l 1 -f " + filename
             process_list.append(subprocess.Popen(command, shell=True))
         # cpu
-        cpu_command = "exec top -d 1 -bn " + str(secs) + " | grep Cpu > ./tmp/profiling_" + str(self._worker_id) + "_cpu.out"
+        cpu_command = "exec top -d 1 -bn " + str(secs) + " | grep Cpu > /root/tmp/profiling_" + str(self._worker_id) + "_cpu.out"
         cpu_process = subprocess.Popen(cpu_command, shell=True)
         # io
-        io_command = "exec iostat -d 1 " + str(secs) + " | grep nvme > ./tmp/profiling_" + str(self._worker_id) + "_disk.out"
-        io_process = subprocess.Popen(io_command, shell=True)
+        sm_command = "exec dcgmi dmon -g 2 -e 1002,1003,1005,1004  > /root/tmp/profiling_" + str(self._worker_id) + "_sm.out"
+        sm_process = subprocess.Popen(sm_command, shell=True)
 
         # wait
         count = 0
@@ -160,14 +167,16 @@ class Worker(object):
             process.terminate()
             count += 1
             process.wait()
+        cpu_process.send_signal(signal.SIGINT)
+        sm_process.send_signal(signal.SIGINT)
         cpu_process.wait()
-        io_process.wait()
+        sm_process.wait()
 
         # handle results
         useful_ratio = 0
         gpu_utils = []
         for device in device_list:
-            filename = "./tmp/profiling_" + str(self._worker_id) + "_" +str(device) + ".xml"
+            filename = "/root/tmp/profiling_" + str(self._worker_id) + "_" +str(device) + ".xml"
             memory_usage, utilization = utils.parse_xml(filename)
             for i in range(len(memory_usage)):
                 memory_usage[i] = int(memory_usage[i].split(' ')[0])
@@ -188,25 +197,35 @@ class Worker(object):
 
         
         cpu_util_list = []
-        util_str_list = open("./tmp/profiling_" + str(self._worker_id) + "_cpu.out", "r").read().split('\n')
+        util_str_list = open("/root/tmp/profiling_" + str(self._worker_id) + "_cpu.out", "r").read().split('\n')
         for i in range(secs):
             idle = float(util_str_list[i].split()[7])
             cpu_util_list.append(round(100.0 -idle, 3))
         cpu_util = sum(cpu_util_list)/len(cpu_util_list)
         self._logger.info(f'cpu util: {cpu_util_list}, {cpu_util}')
         
-        io_util_list, io_read = [], 0
-        util_str_list = open("./tmp/profiling_" + str(self._worker_id) + "_disk.out", "r").read().split('\n')
-        if len(util_str_list) > 1:
-            for i in range(secs):
-                print(util_str_list,util_str_list[i])
-                kB_read = float(util_str_list[i].split()[2])
-                io_util_list.append(kB_read)
-            io_read = sum(io_util_list[1:])/(len(io_util_list)-1)
-        self._logger.info(f'io read: {io_util_list} {io_read}')
+        sm_util_list, sm_util = [], 0
+        # util_str_list = open("/root/tmp/profiling_" + str(self._worker_id) + "_sm.out", "r").read().split('\n')
+        # if len(util_str_list) > 1:
+        #     for i in range(secs):
+        #         print(util_str_list,util_str_list[i])
+        #         kB_read = float(util_str_list[i].split()[2])
+        #         io_util_list.append(kB_read)
+        #     io_read = sum(io_util_list[1:])/(len(io_util_list)-1)
+        # self._logger.info(f'io read: {io_util_list} {io_read}')
+        # res = {'SMACT':[], 'SMOCC':[], 'TENSO':[], 'DRAMA':[]}
+        with open("/root/tmp/profiling_" + str(self._worker_id) + "_sm.out", 'r') as file:
+            lines = file.readlines()
+            n, i = len(lines), 1
+            while i < n:
+                line = lines[i].split()
+                if len(line) > 0 and line[0]=='GPU':
+                    sm_util_list.append(float(line[2]))
+                i += 1
+        sm_util = mean(sm_util_list)
+        self._logger.info(f'sm_util: {sm_util}')
 
-
-        return gpu_util, cpu_util, io_read
+        return gpu_util, cpu_util, sm_util
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

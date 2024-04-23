@@ -19,7 +19,8 @@ class CVModel:
         '''
         prepare dataloader, model, optimizer for training
         '''
-        self.device = torch.device("cuda")
+        # self.device = torch.device("cuda")
+        self.device = torch.cuda.current_device()
         time0 = time.time()
         train_dataset = \
             datasets.ImageFolder(self.sargs["train_dir"],

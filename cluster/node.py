@@ -49,6 +49,13 @@ class _Node(object):
             for job in gpu.get_job_list():
                 job_set.add(job['job_idx'])
         return len(job_set)   
+    @property
+    def free_gpus_num(self):
+        tmp = 0
+        for gpu in self.gpu_list:
+            if len(gpu.get_job_list()) == 0:
+                tmp += 1
+        return tmp
 
     ''' GPU  '''
     def set_gpus(self):

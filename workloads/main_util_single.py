@@ -92,7 +92,8 @@ def train():
         # start subprocess
         # gpu
         cur_pid = os.getpid()
-        visible_device_str = os.getenv('CUDA_VISIBLE_DEVICES')
+        # visible_device_str = os.getenv('CUDA_VISIBLE_DEVICES')
+        visible_device_str = args.visible_device_str
         # print(os.environ.keys())
         # print('visible_device_str:',visible_device_str)
         if visible_device_str!=None:
@@ -188,7 +189,10 @@ def train():
             print("gpu: ", memory_usage, utilization, gpu_util)
         print("cpu: ", cpu_util_list, cpu_util)
         print("io: ", io_read, 'kb/s')
-        trainer.report_itertime([itertime], [gpu_util, sorted_memory_usages[-2], cpu_util, io_read])
+        if visible_device_str!=None:
+            trainer.report_itertime([itertime], [gpu_util, sorted_memory_usages[-2], cpu_util, io_read])
+        else:
+            trainer.report_itertime([itertime], [gpu_util, cpu_util, io_read])
 
 
 if __name__ == '__main__':
@@ -201,10 +205,15 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     if args.cuda:
         # Horovod: pin GPU to local rank. 一个gpu一个进程
-        print("hvd.local_rank():",hvd.local_rank())
-        torch.cuda.set_device(hvd.local_rank())
+        host_gpus = utils.json_to_dict(args.gpus_file)
+        hostname = subprocess.run(['hostname'], capture_output=True, text=True).stdout[:-1]
+        gpu_list = host_gpus[hostname].split(",")
+        device = int(gpu_list[hvd.local_rank()])
+        print("hvd.local_rank():",hvd.local_rank(),",cuda device:",device)
+        torch.cuda.set_device(device)
         torch.cuda.manual_seed(args.seed)
     if hvd.rank()==0:                       # 第一个进程
+        args.visible_device_str = host_gpus[hostname]
         trainer = Trainer(args.scheduler_ip, args.scheduler_port, utils.get_host_ip(), args.trainer_port, [args.job_id0, args.job_id1, args.job_id2, args.job_id3])
     cudnn.benchmark = True  # 设置 torch.backends.cudnn.benchmark=True 将会让程序在开始时花费一点额外时间，为整个网络的每个卷积层搜索最适合它的卷积实现算法，进而实现网络的加速
 

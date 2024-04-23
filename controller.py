@@ -24,15 +24,16 @@ class Controller(object):
         self._server_for_worker = self.make_server_for_worker(port)
         
         self.wait_for_workers()
-        print("ljx: Controller wait finish!\n")
+        
         self._jump_time = 0
         self._start_time = time.time()
+        print("ljx: Controller wait finish!\n")
     
     def set_start_time(self):
         self._start_time = time.time()
 
     def get_time(self):
-        return time.time()+self._jump_time-self._start_time
+        return time.time()-self._start_time
 
     
     def make_server_for_worker(self, port: int):
@@ -60,13 +61,13 @@ class Controller(object):
 
     def get_util(self, secs=20):
         num_workers = len(self._workers)
-        avg_gpu_util_all, avg_cpu_util_all, avg_io_read_all = 0, 0, 0
+        avg_gpu_util_all, avg_cpu_util_all, avg_sm_util_all = 0, 0, 0
         def worker_get_util(worker):
-            nonlocal avg_gpu_util_all, avg_cpu_util_all, avg_io_read_all
-            avg_gpu_util, avg_cpu_util, avg_io_read = worker.get_util(secs)
+            nonlocal avg_gpu_util_all, avg_cpu_util_all, avg_sm_util_all
+            avg_gpu_util, avg_cpu_util, avg_sm_util = worker.get_util(secs)
             avg_gpu_util_all += avg_gpu_util
             avg_cpu_util_all += avg_cpu_util
-            avg_io_read_all += avg_io_read
+            avg_sm_util_all += avg_sm_util
             
         threads = []
         for worker in self._workers:
@@ -80,8 +81,8 @@ class Controller(object):
         
         avg_gpu_util_all /= num_workers
         avg_cpu_util_all /= num_workers
-        avg_io_read_all /= num_workers
-        return avg_gpu_util_all, avg_cpu_util_all, avg_io_read_all
+        avg_sm_util_all /= num_workers
+        return avg_gpu_util_all, avg_cpu_util_all, avg_sm_util_all
     
 
     def _register_worker_impl(self, worker_ip, worker_port, num_gpus):

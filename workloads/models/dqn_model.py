@@ -16,7 +16,8 @@ class DQNModel:
             mkdir('log')
             mkdir('tf_log')
             mkdir('model')
-        self.device = torch.device("cuda:%d" % (hvd.local_rank()))
+        # self.device = torch.device("cuda:%d" % (hvd.local_rank()))
+        self.device = torch.cuda.current_device()
         Config.DEVICE = self.device
         config = Config()
         

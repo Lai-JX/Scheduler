@@ -100,7 +100,7 @@ JOBS = jobs.JOBS
 
 #get host info
 CLUSTER = cluster.CLUSTER
-CLUSTER_TMP = cluster.CLUSTER_TMP
+# CLUSTER_TMP = cluster.CLUSTER_TMP
 
 #get LOG object
 LOG = log.LOG
@@ -124,9 +124,9 @@ def parse_job_file(trace_file):
     job_idx = 0
     for row in reader: 
         #add job into JOBS,  JOBS = _TFJobs()
-        if int(row['num_gpu']) <= 8:     # ljx (row['model_name'] != 'bert' and row['model_name'] != 'gpt2') and 
-            JOBS.add_job(row)
-            job_idx += 1
+        # if int(row['num_gpu']) <= 16:     # ljx (row['model_name'] != 'bert' and row['model_name'] != 'gpt2') and 
+        JOBS.add_job(row)
+        job_idx += 1
         # if job_idx == 20:   # ljx:先只采用20个job
         #     break
         # JOBS.read_job_info(job_idx, 'num_gpu')
@@ -1736,16 +1736,24 @@ def main():
         sjf_sim_jobs(scheduler)
     elif FLAGS.schedule == 'sjf-test':                                                          # shortestf first
         sjf_sim_jobs(scheduler)
-    elif FLAGS.schedule == 'sjf-ffs' or FLAGS.schedule == 'sjf-ffs-m':                          # sjf-ffs
+    elif FLAGS.schedule == 'Tiresias':                                                          # shortestf first
+        Tiresias_jobs(scheduler)
+    elif FLAGS.schedule == 'sjf-ffs' or FLAGS.schedule == 'sjf-ffss':                           # sjf-ffs
         sjf_ffs_jobs(scheduler)
-    elif FLAGS.schedule == 'sjf-bsbf':                                                          # sjf-bsbf
+    elif FLAGS.schedule == 'sjf-ffs-m' or FLAGS.schedule == 'sjf-ffss-m':                           # sjf-ffs
+        sjf_ffs_jobs(scheduler,is_preempt=True,with_mps=True)
+    elif FLAGS.schedule == 'sjf-ffs-no-preempt' or FLAGS.schedule == 'sjf-ffss-no-preempt':                                               # sjf-ffs
+        sjf_ffs_jobs(scheduler,is_preempt=False)
+    elif FLAGS.schedule == 'sjf-ffs-no-preempt-m' or FLAGS.schedule == 'sjf-ffss-no-preempt-m':                                               # sjf-ffs
+        sjf_ffs_jobs(scheduler,is_preempt=False,with_mps=True)
+    elif FLAGS.schedule == 'sjf-bsbf' or FLAGS.schedule == 'sjf-bsbfs':                                                          # sjf-bsbf
         sjf_bsbf_jobs(scheduler)
-    elif FLAGS.schedule == 'sjf-bsbf-m':                                                        # sjf-bsbf-m
-        sjf_bsbf_jobs(scheduler,with_mps=True)
-    elif FLAGS.schedule == 'sjf-bsbf-no-preempt':                                               # sjf-bsbf-no-preempt
-        sjf_bsbf_no_preempt(scheduler)
-    elif FLAGS.schedule == 'sjf-bsbf-no-preempt-m':                                             # sjf-bsbf-no-preempt-m
-        sjf_bsbf_no_preempt(scheduler,with_mps=True)
+    elif FLAGS.schedule == 'sjf-bsbf-m' or FLAGS.schedule == 'sjf-bsbfs-m':                                                        # sjf-bsbf-m
+        sjf_bsbf_jobs(scheduler,is_preempt=True,with_mps=True)
+    elif FLAGS.schedule == 'sjf-bsbf-no-preempt' or FLAGS.schedule == 'sjf-bsbfs-no-preempt':                                               # sjf-bsbf-no-preempt
+        sjf_bsbf_jobs(scheduler,is_preempt=False)
+    elif FLAGS.schedule == 'sjf-bsbf-no-preempt-m' or FLAGS.schedule == 'sjf-bsbfs-no-preempt-m':                                             # sjf-bsbf-no-preempt-m
+        sjf_bsbf_jobs(scheduler,is_preempt=False,with_mps=True)
     # elif FLAGS.schedule == 'shortest':                                                        # SRTF
     #     shortest_first_sim_jobs(scheduler)
     # elif FLAGS.schedule == 'shortest-gpu':                                                  # SRSF

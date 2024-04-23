@@ -171,7 +171,8 @@ class NLPModel:
             )
         
         # Setup CUDA, GPU & distributed training
-        self.device = torch.device("cuda", self.sargs["local_rank"])
+        # self.device = torch.device("cuda", self.sargs["local_rank"])
+        self.device = torch.cuda.current_device()
         self.sargs["n_gpu"] = 1
 
         # Load pretrained model and tokenizer

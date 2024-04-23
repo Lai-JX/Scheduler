@@ -15,7 +15,8 @@ class A2CModel:
         if hvd.local_rank()==0:
             mkdir('log')
             mkdir('tf_log')
-        self.device = torch.device("cuda")
+        # self.device = torch.device("cuda")
+        self.device = torch.cuda.current_device()
         Config.DEVICE = self.device
         kwargs = dict()
         kwargs['log_level'] = 0

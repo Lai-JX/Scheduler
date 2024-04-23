@@ -26,6 +26,8 @@ parser.add_argument('--seed', type=int, default=42,
                     help='random seed')
 parser.add_argument('--this-dir', type=str, default='./',
                     help='the path of this file')
+parser.add_argument('--gpus_file', type=str, default='./',
+                    help='the path of gpu file')
 
 # common for CV
 parser.add_argument('--num-classes', type=int, default=1000,
