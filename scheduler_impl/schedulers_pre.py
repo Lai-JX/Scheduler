@@ -4,7 +4,7 @@ import math
 import os
 import sys
 import time
-from Scheduler.scheduler_impl.schedulers import try_get_job_res
+from scheduler_impl.schedulers import try_get_job_res
 import utils
 import flags
 import jobs
@@ -12,7 +12,7 @@ from cluster import cluster
 import log
 import numpy as np
 import cvxpy as cp
-from matching import Blossom_Same, _Packing
+from scheduler_impl.matching import Blossom_Same, _Packing
 FLAGS = flags.FLAGS
 
 #prepare JOBS list

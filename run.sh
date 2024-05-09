@@ -29,7 +29,9 @@ shift
 # jobs=('trace_data_new_32')
 # jobs=('trace_data_new1')
 jobs=('cluster_trace_12')
-setups=("n1g8")
+# setups=("n4g8")
+setups=("n1g1")
+# schedule_intervals=("150")          # 调度间隔
 schedule_intervals=("60")          # 调度间隔
 
 IFS=','
@@ -51,6 +53,31 @@ select_placement()
         placement=('bsbfs')    
     fi
     p=$placement
+}
+get_gpu_list()
+{
+    input_str=$1
+
+    # 使用 Bash 的内置字符串操作功能来找到 "g" 后面的数字
+    num="${input_str#*g}"
+
+    # 检查找到的数字是否为纯数字
+    if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+        echo "Error: No数字 found after 'g' in the string."
+        exit 1
+    fi
+
+    # 使用循环生成以逗号隔开的字符串
+    gpu_list=""
+    for (( i=0; i<num; i++ )); do
+        if [ "$i" -ne "0" ]; then
+            gpu_list+=","
+        fi
+        gpu_list+="$i"
+    done
+
+    # 输出结果
+    # echo "$gpu_list"
 }
 # placement=('mps' 'mps3')
 echo 'schedulers:'${schedulers[@]}
@@ -88,12 +115,13 @@ for setup in ${setups[@]};do                                                    
                     python -u $THIS_DIR/run.py --cluster_spec=$THIS_DIR/${cluster_spec} --print --scheme=${p} --trace_file=$THIS_DIR/${job_file} --schedule=${s} --log_path=$THIS_DIR/${log_name} --schedule_interval ${schedule_interval} >$THIS_DIR/${log_name}/scheduler.out &   # ljx >$THIS_DIR/${log_name}/scheduler.out
                     sleep 10s
                 else
-                    sleep 2m    # ljx 
-                    # sleep 10s
+                    # sleep 2m    # ljx 
+                    sleep 10s
                 fi
                 echo -e '\nstart worker\n'
                 echo "python $THIS_DIR/worker.py --master_ip $SCHEDULER_IP --worker_port $WORKER_PORT --trace_name ${job_log} --this-dir ${THIS_DIR} $arg &"
-                python -u $THIS_DIR/worker.py --master_ip $SCHEDULER_IP --worker_port $WORKER_PORT --trace_name ${job_log} --this-dir ${THIS_DIR} $arg --log_path=$THIS_DIR/${log_name}/worker${WORKER_ID}.log --gpus='0,1,2,3,4,5,6,7' >$THIS_DIR/${log_name}/worker${WORKER_ID}.out &     # ljx 由于家目录共享，所以加个WORKER_ID区分一下不同worker.out 添加--log_path=$THIS_DIR/${log_name} --gpus='0,1'
+                get_gpu_list $setup
+                python -u $THIS_DIR/worker.py --master_ip $SCHEDULER_IP --worker_port $WORKER_PORT --trace_name ${job_log} --this-dir ${THIS_DIR} $arg --log_path=$THIS_DIR/${log_name}/worker${WORKER_ID}.log --gpus=$gpu_list >$THIS_DIR/${log_name}/worker${WORKER_ID}.out &     # ljx 由于家目录共享，所以加个WORKER_ID区分一下不同worker.out 添加--log_path=$THIS_DIR/${log_name} --gpus='0,1'
                 # python /home/jxlai/project/Muri_exp/worker.py --master_ip 10.0.0.11 --worker_port 9001 --trace_name /home/jxlai/project/Muri_exp/job_logs/n4g4jcluster_tracep4si60ff60/dlas-gpu-yarn-4 --this-dir /home/jxlai/project/Muri_exp
                 wait
 

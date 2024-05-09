@@ -2,10 +2,10 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import worker_to_master_pb2 as worker__to__master__pb2
+import operator_pb2 as operator__pb2
 
 
-class WorkerToMasterStub(object):
+class OperatorStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -14,58 +14,58 @@ class WorkerToMasterStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.RegisterWorker = channel.unary_unary(
-                '/WorkerToMaster/RegisterWorker',
-                request_serializer=worker__to__master__pb2.RegisterWorkerRequest.SerializeToString,
-                response_deserializer=worker__to__master__pb2.RegisterWorkerResponse.FromString,
+        self.AddJobs = channel.unary_unary(
+                '/Operator/AddJobs',
+                request_serializer=operator__pb2.AddJobsRequest.SerializeToString,
+                response_deserializer=operator__pb2.AddJobsResponse.FromString,
                 )
-        self.Done = channel.unary_unary(
-                '/WorkerToMaster/Done',
-                request_serializer=worker__to__master__pb2.DoneRequest.SerializeToString,
-                response_deserializer=worker__to__master__pb2.DoneResponse.FromString,
+        self.DeleteJobs = channel.unary_unary(
+                '/Operator/DeleteJobs',
+                request_serializer=operator__pb2.DeleteJobsRequest.SerializeToString,
+                response_deserializer=operator__pb2.DeleteJobsResponse.FromString,
                 )
 
 
-class WorkerToMasterServicer(object):
+class OperatorServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def RegisterWorker(self, request, context):
+    def AddJobs(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def Done(self, request, context):
+    def DeleteJobs(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_WorkerToMasterServicer_to_server(servicer, server):
+def add_OperatorServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'RegisterWorker': grpc.unary_unary_rpc_method_handler(
-                    servicer.RegisterWorker,
-                    request_deserializer=worker__to__master__pb2.RegisterWorkerRequest.FromString,
-                    response_serializer=worker__to__master__pb2.RegisterWorkerResponse.SerializeToString,
+            'AddJobs': grpc.unary_unary_rpc_method_handler(
+                    servicer.AddJobs,
+                    request_deserializer=operator__pb2.AddJobsRequest.FromString,
+                    response_serializer=operator__pb2.AddJobsResponse.SerializeToString,
             ),
-            'Done': grpc.unary_unary_rpc_method_handler(
-                    servicer.Done,
-                    request_deserializer=worker__to__master__pb2.DoneRequest.FromString,
-                    response_serializer=worker__to__master__pb2.DoneResponse.SerializeToString,
+            'DeleteJobs': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteJobs,
+                    request_deserializer=operator__pb2.DeleteJobsRequest.FromString,
+                    response_serializer=operator__pb2.DeleteJobsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'WorkerToMaster', rpc_method_handlers)
+            'Operator', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class WorkerToMaster(object):
+class Operator(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def RegisterWorker(request,
+    def AddJobs(request,
             target,
             options=(),
             channel_credentials=None,
@@ -75,14 +75,14 @@ class WorkerToMaster(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/WorkerToMaster/RegisterWorker',
-            worker__to__master__pb2.RegisterWorkerRequest.SerializeToString,
-            worker__to__master__pb2.RegisterWorkerResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/Operator/AddJobs',
+            operator__pb2.AddJobsRequest.SerializeToString,
+            operator__pb2.AddJobsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def Done(request,
+    def DeleteJobs(request,
             target,
             options=(),
             channel_credentials=None,
@@ -92,8 +92,8 @@ class WorkerToMaster(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/WorkerToMaster/Done',
-            worker__to__master__pb2.DoneRequest.SerializeToString,
-            worker__to__master__pb2.DoneResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/Operator/DeleteJobs',
+            operator__pb2.DeleteJobsRequest.SerializeToString,
+            operator__pb2.DeleteJobsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

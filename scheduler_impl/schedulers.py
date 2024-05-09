@@ -73,6 +73,41 @@ def try_get_job_res(job=None,with_mps=False):
     if len(job["placements"]) > 0:
         print(f'node len:{len(job["placements"][0]["nodes"])}\n')
     return ret
+def delete_jobs(scheduler):
+    while not JOBS.delete_queue.empty():
+        job_id = JOBS.delete_queue.get()
+        job = JOBS.find_job_by_id(job_id)
+        scheduler._logger.info(f'delete_jobs, {job["status"]}')
+        if 'RUNNING' == job['status']:
+            scheduler._logger.info(f'before delete; check: running  {job["job_idx"]} {job["job_id"]} {job["remaining_iterations"]} {job["pending_time"]} {job["total_executed_time"]}')
+            time_save_begin = time.time()
+            try:   
+                scheduler.save_model([job['job_idx']])      
+                scheduler._logger.info(f'scheduler, {job["model_name"]}, model save time: {time.time()-time_save_begin}') 
+                if job['job_idx'] in scheduler._trainers:
+                    scheduler._trainers.pop(job['job_idx'])
+                jobinfo = JOBS.to_jobinfo(job)
+                scheduler._controller.kill(jobinfo)
+                CLUSTER.release_job_res(job)
+                JOBS.runnable_jobs.remove(job)
+            except Exception as e:
+                error_message = str(e)
+                print('delete job', error_message)  
+        elif 'PENDING' == job['status']:
+            scheduler._logger.info(f'before delete; check: pending  {job["job_idx"]} {job["job_id"]} {job["remaining_iterations"]} {job["pending_time"]} {job["total_executed_time"]}')
+
+            JOBS.runnable_jobs.remove(job)
+            
+        elif 'EVENT' == job['status']:  #almost impossible
+            scheduler._logger.info(f'before delete; check: event  {job["job_idx"]} {job["job_id"]} {job["remaining_iterations"]} {job["pending_time"]}')
+            JOBS.remove_job_in_events(job)
+            # JOBS.job_list.remove(job)
+        elif 'END' == job['status']: 
+            # JOBS.runnable_jobs.remove(job)
+            scheduler._logger.info(f'before delete; check: ending  {job["job_idx"]} {job["job_id"]} {job["remaining_iterations"]} {job["pending_time"]} {job["total_executed_time"]}')
+            pass
+        scheduler._logger.info(f'scheduler, {job["job_idx"]}, {job["job_id"]}, delete ')
+        
     
 def deal_done_jobs(scheduler):
     done_flag = False
@@ -118,6 +153,7 @@ def add_new_jobs(scheduler):
 
 def update_jobs_status(scheduler, gputime):
     tmp_time = scheduler.get_time()
+    JOBS.cur_time = tmp_time
     # if done_flag or new_flag:
     # assert tmp_time - last_check_time > FLAGS.schedule_interval or tmp_time < FLAGS.schedule_interval # 取消特定周期调度
     for rjob in JOBS.runnable_jobs:
@@ -143,18 +179,20 @@ def update_jobs_status(scheduler, gputime):
             rjob['remaining_time'] = rjob['iteration_time'] * rjob['remaining_iterations']
             if gputime:
                 rjob['remaining_gputime'] = rjob['remaining_time'] * rjob['num_gpu']
-            scheduler._logger.info(f'{tmp_time} check: running  {rjob["job_idx"]} {rjob["remaining_iterations"]} {rjob["total_executed_time"]}')  
+            scheduler._logger.info(f'{tmp_time} check: running  {rjob["job_idx"]} {rjob["job_id"]} {rjob["remaining_iterations"]} {rjob["total_executed_time"]}')  
         elif 'PENDING' == rjob['status']:
             tmp = tmp_time - rjob['last_check_time']
             rjob['pending_time'] += tmp
             rjob['last_check_time'] = tmp_time
-            scheduler._logger.info(f'{tmp_time} check: pending  {rjob["job_idx"]} {rjob["remaining_iterations"]} {rjob["pending_time"]}')
+            scheduler._logger.info(f'{tmp_time} check: pending  {rjob["job_idx"]} {rjob["job_id"]} {rjob["remaining_iterations"]} {rjob["pending_time"]}')
         elif 'END' == rjob['status']: #almost impossible
             JOBS.runnable_jobs.remove(rjob)
-            scheduler._logger.info(f'{tmp_time} check: ending  {rjob["job_idx"]} {rjob["remaining_iterations"]}')
+            scheduler._logger.info(f'{tmp_time} check: ending  {rjob["job_idx"]} {rjob["job_id"]} {rjob["remaining_iterations"]}')
             pass
 
-def sort_jobs(gputime):
+def sort_jobs(scheduler,gputime):
+
+    delete_jobs(scheduler)
     #sort jobs with shortest first
     if gputime:
         JOBS.runnable_jobs.sort(key = lambda e:e.__getitem__('remaining_gputime'))
@@ -308,6 +346,7 @@ def fifo_sim_jobs(scheduler=None, gputime=False, place=False):
         new_flag = False
         scheduler._logger.info(f'before: {scheduler.get_time()}')
 
+        JOBS.job_lock.acquire()
         done_flag = deal_done_jobs(scheduler)
         new_flag = add_new_jobs(scheduler)
         
@@ -316,8 +355,8 @@ def fifo_sim_jobs(scheduler=None, gputime=False, place=False):
         # sort_jobs(gputime)
         JOBS.runnable_jobs.sort(key = lambda e:e.__getitem__('submit_time'))
         
-
         run_jobs, preempt_jobs = jobs_placement(scheduler)
+        JOBS.job_lock.release()
         jobs_execute(scheduler, run_jobs, preempt_jobs)
         
         if (len(JOBS.job_events) + len(JOBS.runnable_jobs))> 0:
@@ -348,15 +387,16 @@ def sjf_sim_jobs(scheduler=None, gputime=False, place=False):
         new_flag = False
         scheduler._logger.info(f'before: {scheduler.get_time()}')
 
+        JOBS.job_lock.acquire()
         done_flag = deal_done_jobs(scheduler,)
         new_flag = add_new_jobs(scheduler)
         
         time00 = time.time()
         update_jobs_status(scheduler,gputime)
-        sort_jobs(gputime)
+        sort_jobs(scheduler,gputime)
         
-
         run_jobs, preempt_jobs = jobs_placement(scheduler)
+        JOBS.job_lock.release()
         jobs_execute(scheduler, run_jobs, preempt_jobs)
 
         if (len(JOBS.job_events) + len(JOBS.runnable_jobs))> 0:
@@ -381,7 +421,7 @@ def Tiresias_jobs(scheduler=None, gputime=False, place=False):
         done_flag = False
         new_flag = False
         scheduler._logger.info(f'before: {scheduler.get_time()}')
-
+        JOBS.job_lock.acquire()
         # 1. deal with done queue
         scheduler._controller.done_queue_lock.acquire()                     # 加锁
         while not scheduler._controller.done_queue.empty():
@@ -411,6 +451,7 @@ def Tiresias_jobs(scheduler=None, gputime=False, place=False):
         scheduler._controller.done_queue_lock.release() 
 
         # 2. add new jobs
+        
         while scheduler.has_ready_jobs(scheduler.get_time()):
             event = JOBS.job_events.pop(0)
             assert 'start_jobs' in event
@@ -427,6 +468,7 @@ def Tiresias_jobs(scheduler=None, gputime=False, place=False):
         demote_flag = False
         time00 = time.time()
         tmp_time = scheduler.get_time()
+        JOBS.cur_time = tmp_time
         for rjob in JOBS.runnable_jobs:
             if 'RUNNING' == rjob['status']:
                 tmp = tmp_time - rjob['last_check_time']
@@ -487,9 +529,9 @@ def Tiresias_jobs(scheduler=None, gputime=False, place=False):
         for queue in JOBS.queues:
             for rjob in queue:
                 tmp_runnable_jobs.append(rjob)
-        
 
         run_jobs, preempt_jobs = jobs_placement(scheduler)
+        JOBS.job_lock.release()
         jobs_execute(scheduler, run_jobs, preempt_jobs)
 
         for idx,queue in enumerate(JOBS.queues):
@@ -522,15 +564,18 @@ def sjf_ffs_jobs(scheduler=None, is_preempt=True, with_mps=False, gputime=False,
 
         scheduler._logger.info(f'before: {scheduler.get_time()}')
 
+        JOBS.job_lock.acquire()
         done_flag = deal_done_jobs(scheduler)
+
         new_flag = add_new_jobs(scheduler)
 
         time00 = time.time()
 
         update_jobs_status(scheduler,gputime)
-        sort_jobs(gputime)
-
+        sort_jobs(scheduler,gputime)
+        
         run_jobs, preempt_jobs = jobs_placement(scheduler,is_preempt,with_mps)
+        JOBS.job_lock.release()
         jobs_execute(scheduler, run_jobs, preempt_jobs)
 
         if (len(JOBS.job_events) + len(JOBS.runnable_jobs))> 0:
@@ -721,15 +766,18 @@ def sjf_bsbf_jobs(scheduler=None, is_preempt=True, with_mps=False, gputime=False
 
         scheduler._logger.info(f'before: {scheduler.get_time()}')
 
+        JOBS.job_lock.acquire()
         done_flag = deal_done_jobs(scheduler)
+
         new_flag = add_new_jobs(scheduler)
 
         time00 = time.time()
 
         update_jobs_status(scheduler,gputime)
-        sort_jobs(gputime)
+        sort_jobs(scheduler,gputime)
 
         run_jobs, preempt_jobs = jobs_placement(scheduler,is_preempt, with_mps)
+        JOBS.job_lock.release()
         jobs_execute(scheduler, run_jobs, preempt_jobs)
 
         if (len(JOBS.job_events) + len(JOBS.runnable_jobs))> 0:

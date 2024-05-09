@@ -1,0 +1,3 @@
+job_id,num_gpu,iterations,model_name,batch_size,iteration_time
+400,1,58,resnet18,128,779
+401,1,340,shufflenet_v2_x1_0,128,850

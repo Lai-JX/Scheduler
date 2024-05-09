@@ -3,7 +3,7 @@ rpc:
 	python3 -m grpc_tools.protoc -Iruntime/proto --python_out=runtime/rpc_stubs --grpc_python_out=runtime/rpc_stubs runtime/proto/master_to_worker.proto
 	python3 -m grpc_tools.protoc -Iruntime/proto --python_out=runtime/rpc_stubs --grpc_python_out=runtime/rpc_stubs runtime/proto/trainer_to_scheduler.proto
 	python3 -m grpc_tools.protoc -Iruntime/proto --python_out=runtime/rpc_stubs --grpc_python_out=runtime/rpc_stubs runtime/proto/scheduler_to_trainer.proto
-
+	python3 -m grpc_tools.protoc -Iruntime/proto --python_out=runtime/rpc_stubs --grpc_python_out=runtime/rpc_stubs runtime/proto/operator.proto
 clean:
 	rm -rf runtime/rpc_stubs/*_pb2.py runtime/rpc_stubs/*_pb2_grpc.py
 
@@ -17,6 +17,8 @@ reset:
 
 rm:
 	./script/clean.sh;
+kill:
+	./script/kill.sh;
 
 ######################### run scheduler #########################
 
@@ -83,12 +85,12 @@ sjf-test1:
 	./script/kill.sh; ./run.sh 10.244.17.22 9002 9013 1 sjf-test
 
 
-# fifo,sjf,Tiresias,sjf-ffs,sjf-bsbf,sjf-ffss,sjf-bsbfs,sjf-ffss-no-preempt,sjf-bsbfs-no-preempt,sjf-ffss-no-preempt-m,sjf-bsbfs-no-preempt-m,
+# fifo,sjf,Tiresias,sjf-ffs,sjf-bsbf,sjf-ffs-no-preempt,sjf-bsbf-no-preempt,sjf-ffss,sjf-bsbfs,sjf-ffss-no-preempt,sjf-bsbfs-no-preempt,sjf-ffss-no-preempt-m,sjf-bsbfs-no-preempt-m,
 all::
-	./script/clean.sh; ./script/kill.sh; ./run.sh 192.158.0.11 9001 9013 0 fifo
+	./script/clean.sh; ./script/kill.sh; ./run.sh 192.158.0.12 9001 9013 0 sjf-ffs-no-preempt,sjf-bsbf-no-preempt
 all1:
-	rm /root/tmp/*.out; rm /root/tmp/*.xml; ./script/kill.sh; ./run.sh 192.158.0.11 9001 9013 1 fifo
+	rm /root/tmp/*.out; rm /root/tmp/*.xml; ./script/kill.sh; ./run.sh 192.158.0.12 9001 9013 1 sjf-ffs-no-preempt,sjf-bsbf-no-preempt
 all2:
-	rm /root/tmp/*.out; rm /root/tmp/*.xml; ./script/kill.sh; ./run.sh 192.158.0.11 9001 9013 2 fifo
+	rm /root/tmp/*.out; rm /root/tmp/*.xml; ./script/kill.sh; ./run.sh 192.158.0.12 9001 9013 2 sjf-ffs-no-preempt,sjf-bsbf-no-preempt
 all3:
-	rm /root/tmp/*.out; rm /root/tmp/*.xml; ./script/kill.sh; ./run.sh 192.158.0.11 9001 9013 3 fifo
+	rm /root/tmp/*.out; rm /root/tmp/*.xml; ./script/kill.sh; ./run.sh 192.158.0.12 9001 9013 3 sjf-ffs-no-preempt,sjf-bsbf-no-preempt

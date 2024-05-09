@@ -65,6 +65,8 @@ flags.DEFINE_integer('num_node_p_switch', 32,
                 '''Part of cluster spec: the number of nodes under a single switch, default is 32''')
 flags.DEFINE_integer('num_gpu_p_node', 8, 
                 '''Part of cluster spec: the number of gpus on each node, default is 8''')
+flags.DEFINE_integer('num_gpu_all', 8, 
+                '''the number of gpus on the cluster, default is 8''')
 flags.DEFINE_integer('num_cpu_p_node', 64,
                 '''Part of cluster spec: the number of cpus on each node, default is 64''')
 flags.DEFINE_integer('mem_p_gpu', 49140,
@@ -86,6 +88,7 @@ flags.DEFINE_boolean('flush_stdout', True,
                 '''Flush stdout, default is True''')
 flags.DEFINE_integer('scheduler_port', 9011, '''The port of scheduler''')
 flags.DEFINE_integer('controller_port', 9012, '''The port of controler''')  # trainer_port: begin with 9013; worker_port: 9001
+flags.DEFINE_integer('operator_port', 9008, '''The port of operator''')
 flags.DEFINE_integer('schedule_interval', 10, '''The scheduling interval of scheduler, default is 10s''')
 # flags.DEFINE_integer('fast_forwarding', 0, 
 #                 '''Running iters when fast-forwarding for cluster experiment, default is 0, i.e., no fast-forwarding''')
@@ -123,17 +126,18 @@ def parse_job_file(trace_file):
     utils.print_fn('--------------------------------- Read TF jobs from: %s ---------------------------------' % trace_file) 
     utils.print_fn('    we get the following fields:\n        %s' % keys)
     job_idx = 0
+    print("num_gpu_all:",FLAGS.num_gpu_all)
     for row in reader: 
         #add job into JOBS,  JOBS = _TFJobs()
-        # if int(row['num_gpu']) <= 16:     # ljx (row['model_name'] != 'bert' and row['model_name'] != 'gpt2') and 
-        JOBS.add_job(row)
-        job_idx += 1
+        if int(row['num_gpu']) <= FLAGS.num_gpu_all:     # ljx (row['model_name'] != 'bert' and row['model_name'] != 'gpt2') and 
+            JOBS.add_job(row)
+            job_idx += 1
         # if job_idx == 20:   # ljx:先只采用20个job
         #     break
         # JOBS.read_job_info(job_idx, 'num_gpu')
         # job_idx += 1    
 
-    assert job_idx == len(JOBS.job_list) 
+    # assert job_idx == len(JOBS.job_list) 
     assert JOBS.num_job == len(JOBS.job_list) 
     # JOBS.print_all_job_size_info()
     JOBS.sort_all_jobs()
@@ -177,6 +181,7 @@ def parse_cluster_spec():
             FLAGS.num_gpu_p_node = int(row['num_gpu_p_node'])
             FLAGS.num_cpu_p_node = int(row['num_cpu_p_node'])
             FLAGS.mem_p_gpu = int(row['mem_p_gpu'])
+            FLAGS.num_gpu_all = FLAGS.num_switch * FLAGS.num_node_p_switch * FLAGS.num_gpu_p_node
         fd.close()
 
     utils.print_fn("num_switch: %d" % FLAGS.num_switch)
@@ -184,6 +189,7 @@ def parse_cluster_spec():
     utils.print_fn("num_gpu_p_node: %d" % FLAGS.num_gpu_p_node)
     utils.print_fn("num_cpu_p_node: %d" % FLAGS.num_cpu_p_node)
     utils.print_fn("mem_p_gpu: %d" % FLAGS.mem_p_gpu)
+    utils.print_fn("num_gpu_all: %d" % FLAGS.num_gpu_all)
 
     '''init infra'''
     CLUSTER.init_infra()
@@ -203,19 +209,20 @@ def main():
     #         utils.print_fn("In Main, multi-dlas-gpu without count")
     #         exit()
     ''' Parse input'''
-    parse_job_file(FLAGS.trace_file)    # 读取工作如cluster_exp/trace-data/cluster_trace.csv，并按提交时间排序
     parse_cluster_spec()                # 如cluster_exp/cluster_specs/n1g8.csv
+    parse_job_file(FLAGS.trace_file)    # 读取工作如cluster_exp/trace-data/cluster_trace.csv，并按提交时间排序
+    
 
     ''' prepare logging '''
     LOG.init_log()
 
     ''' scheduler '''
-    scheduler = Scheduler(FLAGS.scheduler_port, FLAGS.controller_port)  # 启动master（Controller）服务端和Schedule服务端，会等待所有的worker都准备好了
+    scheduler = Scheduler(FLAGS.scheduler_port, FLAGS.controller_port, FLAGS.operator_port)  # 启动master（Controller）服务端和Schedule服务端，会等待所有的worker都准备好了
 
     # lp.placement(JOBS.job_list[0])
     ''' Prepare jobs'''
     JOBS.prepare_job_start_events()                                     # 遍历所有job，将所有time添加到JOBS.job_events(sort events based on their submit time), 并将job加到对应的start_jobs列表中 every job has been in EVENT status
-
+    # exit()
     # sim_job_events()
     if FLAGS.schedule == 'fifo':                                                                # fifo
         fifo_sim_jobs(scheduler)

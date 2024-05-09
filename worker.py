@@ -150,10 +150,10 @@ class Worker(object):
         # gpu
         for device in device_list:
             filename = "/root/tmp/profiling_" + str(self._worker_id) + "_" +str(device) + ".xml"
-            command = "exec nvidia-smi -q -i " + str(device) + " -x -l 1 -f " + filename
+            command = "exec nvidia-smi -q -i " + str(device) + " -x -l 1 -f " + filename        # -x 表示输出格式为xml
             process_list.append(subprocess.Popen(command, shell=True))
         # cpu
-        cpu_command = "exec top -d 1 -bn " + str(secs) + " | grep Cpu > /root/tmp/profiling_" + str(self._worker_id) + "_cpu.out"
+        cpu_command = "exec top -d 1 -bn " + str(secs) + " | grep Cpu > /root/tmp/profiling_" + str(self._worker_id) + "_cpu.out"   # -d刷新间隔时间，-b: 表示以批处理模式运行，这种模式下 top 不会占用终端，允许其他命令的输出， -n刷新次数
         cpu_process = subprocess.Popen(cpu_command, shell=True)
         # io
         sm_command = "exec dcgmi dmon -g 2 -e 1002,1003,1005,1004  > /root/tmp/profiling_" + str(self._worker_id) + "_sm.out"
@@ -199,8 +199,13 @@ class Worker(object):
         cpu_util_list = []
         util_str_list = open("/root/tmp/profiling_" + str(self._worker_id) + "_cpu.out", "r").read().split('\n')
         for i in range(secs):
-            idle = float(util_str_list[i].split()[7])
-            cpu_util_list.append(round(100.0 -idle, 3))
+            # print(util_str_list[i])
+            if util_str_list[i].split()[7] == 'id,':
+                print(util_str_list[i])
+                idle = 100.0
+            else:
+                idle = float(util_str_list[i].split()[7])
+            cpu_util_list.append(round(100.0 -idle, 3)) # 由于之前记录的是空闲的cpu时间占比，所以这里要用100来减
         cpu_util = sum(cpu_util_list)/len(cpu_util_list)
         self._logger.info(f'cpu util: {cpu_util_list}, {cpu_util}')
         
@@ -214,16 +219,17 @@ class Worker(object):
         #     io_read = sum(io_util_list[1:])/(len(io_util_list)-1)
         # self._logger.info(f'io read: {io_util_list} {io_read}')
         # res = {'SMACT':[], 'SMOCC':[], 'TENSO':[], 'DRAMA':[]}
-        with open("/root/tmp/profiling_" + str(self._worker_id) + "_sm.out", 'r') as file:
-            lines = file.readlines()
-            n, i = len(lines), 1
-            while i < n:
-                line = lines[i].split()
-                if len(line) > 0 and line[0]=='GPU':
-                    sm_util_list.append(float(line[2]))
-                i += 1
-        sm_util = mean(sm_util_list)
-        self._logger.info(f'sm_util: {sm_util}')
+        sm_util = 0
+        # with open("/root/tmp/profiling_" + str(self._worker_id) + "_sm.out", 'r') as file:
+        #     lines = file.readlines()
+        #     n, i = len(lines), 1
+        #     while i < n:
+        #         line = lines[i].split()
+        #         if len(line) > 0 and line[0]=='GPU':
+        #             sm_util_list.append(float(line[2]))
+        #         i += 1
+        # sm_util = mean(sm_util_list)
+        # self._logger.info(f'sm_util: {sm_util}')
 
         return gpu_util, cpu_util, sm_util
 

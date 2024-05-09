@@ -107,10 +107,10 @@ class _Log(object):
         if FLAGS.schedule == 'gpu-demands':
             log_writer.writerow(['time', '1-GPU', '2-GPU', '4-GPU', '8-GPU', '12-GPU', '16-GPU', '24-GPU', '32-GPU'])
         else:
-            if FLAGS.scheme == 'count':
-                log_writer.writerow(['time', 'job_id', 'num_gpu', 'submit_time', 'start_time', 'end_time', 'executed_time', 'real_executed_time', 'JCT', 'duration', 'pending_time', 'preempt', 'resume', 'promote'])
-            else:
-                log_writer.writerow(['time', 'job_id', 'num_gpu', 'submit_time', 'start_time', 'end_time', 'executed_time', 'real_executed_time', 'JCT', 'duration', 'pending_time', 'job_counter', 'promote'])
+            # if FLAGS.scheme == 'count':
+            log_writer.writerow(['time', 'job_id', 'num_gpu', 'submit_time', 'start_time', 'end_time', 'executed_time', 'real_executed_time', 'JCT', 'pending_time', 'preempt', 'resume', 'promote'])   # 'duration',
+            # else:
+            #     log_writer.writerow(['time', 'job_id', 'num_gpu', 'submit_time', 'start_time', 'end_time', 'executed_time', 'real_executed_time', 'JCT', 'duration', 'pending_time', 'job_counter', 'promote'])
         fd.close()
 
         self._start_time = time.time()
@@ -274,10 +274,10 @@ class _Log(object):
         executed_time = job['end_time'] - job['start_time']
         real_executed_time = job['total_executed_time']
         jct = job['end_time'] - job['submit_time']
-        if FLAGS.scheme == 'count':
-            self.job_list.append([event_time, job['job_id'], job['num_gpu'], job['submit_time'], job['start_time'], job['end_time'], executed_time, real_executed_time, jct, job['duration'], job['pending_time'], job['preempt'], job['resume'], job['promote']])
-        else:
-            self.job_list.append([event_time, job['job_id'], job['num_gpu'], job['submit_time'], job['start_time'], job['end_time'], executed_time, real_executed_time, jct, job['duration'], job['pending_time'], job['job_counter'], job['promote']])
+        # if FLAGS.scheme == 'count':
+        self.job_list.append([event_time, job['job_id'], job['num_gpu'], job['submit_time'], job['start_time'], job['end_time'], executed_time, real_executed_time, jct, job['pending_time'], job['preempt'], job['resume'], job['promote']])   # job['duration']
+        # else:
+        #     self.job_list.append([event_time, job['job_id'], job['num_gpu'], job['submit_time'], job['start_time'], job['end_time'], executed_time, real_executed_time, jct, job['duration'], job['pending_time'], job['job_counter'], job['promote']])
 
 
         if len(self.job_list) >= 1:

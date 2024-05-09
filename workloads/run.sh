@@ -92,7 +92,7 @@ echo -e '\n==='$THIS_DIR
 
 #get real datasets -- imagenet-1k
 # judge_path="$THIS_DIR/datasets/imagenet"
-judge_path="/share/datasets/ILSVRC2012_img_train/"
+judge_path="/share/datasets/ILSVRC2012/train/"
 
 #get nlp datasets - wikitext
 # TRAIN_FILE=$THIS_DIR/datasets/wikitext-2-raw/wiki.train.raw

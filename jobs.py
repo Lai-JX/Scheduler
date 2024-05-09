@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import queue
+import threading
 
 
 '''
@@ -35,54 +37,6 @@ from runtime.rpc_stubs.master_to_worker_pb2 import JobInfo
 
 class _TFJobs(object):
 
-    # class g_job(object):                                # used by muri
-    #     def __init__(self, num_gpu, total_gpu=0):
-    #         self.num_gpu = num_gpu       
-    #         self.name = str(num_gpu) + '-GPU'
-    #         self.total_job = 0
-    #         self.end_job = 0
-    #         self.num_queue = 2
-    #         self.queues = [list() for i in range(self.num_queue)]
-    #         self.queue_limit = [3600, 7200, 18000]
-    #         self.total_gpu = total_gpu
-    #         self.free_gpu = total_gpu
-    #         self.running_jobs = list()
-    #         self.pending_jobs = list()
-    #         self.runnable_jobs = list()
-
-    #     def alloc_free_gpus(self, need_num):
-    #         if self.free_gpu >= need_num:
-    #             self.free_gpu -= need_num
-    #             return True
-    #         else:
-    #             return False
-
-    #     def release_job_gpu(self, num_job=1):
-    #         if num_job < 0:
-    #             utils.print_fn("Error: num_job < 0")
-    #             exit()
-    #         self.free_gpu += int(self.num_gpu * num_job)
-
-    #     def empty_gpu_alloc(self):
-    #         self.free_gpu = self.total_gpu
-
-    #     def get_gpu_reservation(self, reserved_num):
-    #         '''
-    #         Cluster manager should decide (dynamically) the reserved gpus for each g_job object
-    #         '''
-    #         # diff_gpu = reserved_num - self.total_gpu
-    #         # self.total_gpu = reserved_num
-    #         # # how to update free_gpu
-    #         # self.free_gpu += diff_gpu
-    #         used = self.total_gpu - self.free_gpu
-    #         self.total_gpu = reserved_num
-    #         self.free_gpu = self.total_gpu - used
-
-
-    #     def get_gpu_demands(self):
-    #         # return int((len(self.running_jobs) + len(self.pending_jobs)) * self.num_gpu)
-    #         return int(len(self.runnable_jobs) * self.num_gpu)
-
     def __init__(self):
         self.num_job = 0        
         self.job_list = list()
@@ -109,6 +63,9 @@ class _TFJobs(object):
         self.num_queue = 2
         self.queues = [list() for i in range(self.num_queue)]     # dlas
         self.queue_limit = [700,]
+        self.job_lock = threading.Lock()
+        self.cur_time = 0                   # 动态 add jobs 时使用
+        self.delete_queue = queue.Queue()
 
         # mem info in GB
         # self.worker_mem = 5
@@ -185,7 +142,7 @@ class _TFJobs(object):
         '''
 
 
-    def add_job(self, job_dict):
+    def add_job(self, job_dict, add_later=False):
         ''' Add job (job_dict) into job_list'''
         # job_dict['resource_time'] = list()
         # for key, value in job_dict.items():
@@ -211,8 +168,11 @@ class _TFJobs(object):
         # if 'iteration_time' not in job_dict:
         #     job_dict['iteration_time'] = job_dict['duration'] / job_dict['iterations']
         # else:
-        job_dict['submit_time'] /= 1000
-        job_dict['duration'] /= 1000
+        if add_later:
+            job_dict['submit_time'] = self.cur_time + FLAGS.schedule_interval
+        else:
+            job_dict['submit_time'] /= 1000
+        # job_dict['duration'] /= 1000          # ljx
         self.set_itertime(job_dict)
         job_dict['tput']  = 1/job_dict['iteration_time']
     
@@ -380,6 +340,13 @@ class _TFJobs(object):
         print(f'Not found {job_idx} in runnable_jobs.')
         print([job['job_idx'] for job in self.runnable_jobs])
         assert 1==0
+    def find_job_by_id(self, job_id):
+        for job in self.job_list:
+            if job['job_id'] == job_id:
+                return job
+        print(f'Not found {job_id} in runnable_jobs.')
+        print([job['job_id'] for job in self.runnable_jobs])
+        assert 1==0
 
     def read_job_info(self, job_idx, field=None):
         ''' Read  job information, if field == NONE, show all job info'''
@@ -422,11 +389,11 @@ class _TFJobs(object):
         # self.job_list = tmp_list
         
         # ljx：缩放时间
-        max_submit_time = 0.0
-        for job in self.job_list:
-            max_submit_time = job['submit_time'] if job['submit_time'] > max_submit_time else max_submit_time
-        for job in self.job_list:
-            job['submit_time'] = job['submit_time'] / max_submit_time * 300 -81     # 将时间缩放到半小时内 - 600
+        # max_submit_time = 0.0
+        # for job in self.job_list:
+        #     max_submit_time = job['submit_time'] if job['submit_time'] > max_submit_time else max_submit_time
+        # for job in self.job_list:
+        #     job['submit_time'] = job['submit_time'] / max_submit_time * 300 -81     # 将时间缩放到半小时内 - 600
 
         self.job_list.sort(key = lambda e:e.__getitem__('submit_time'))
         utils.print_fn('   Jobs are sorted with their start time')
@@ -481,13 +448,13 @@ class _TFJobs(object):
 
         # return node_dict['network']
 
-    def remove_from_pending(self, job, event_time):
-        job['status'] = 'RUNNING'
-        job['start_time'] = event_time
-        job['end_time'] = job['start_time'] + job['duration']
-        job['pending_time'] = job['start_time'] - job['submit_time']
+    # def remove_from_pending(self, job, event_time):
+    #     job['status'] = 'RUNNING'
+    #     job['start_time'] = event_time
+    #     job['end_time'] = job['start_time'] + job['duration']
+    #     job['pending_time'] = job['start_time'] - job['submit_time']
 
-        self.pending_jobs.remove(job)
+    #     self.pending_jobs.remove(job)
 
     def move_to_pending(self, job):
         job['status'] = 'PENDING'
@@ -512,20 +479,20 @@ class _TFJobs(object):
         job['last_start_time'] = event_time
 
 
-    def sort_shortest_runnable_jobs(self, event_time):
-        for job in self.runnable_jobs:
-            if job['status'] == 'RUNNING':
-                new_execution_time = int(event_time - job['last_check_time'])
-                job['execution_time'] = int(job['execution_time'] + new_execution_time)
-                job['remaining_time'] = int(job['duration'] - job['execution_time'])
+    # def sort_shortest_runnable_jobs(self, event_time):
+    #     for job in self.runnable_jobs:
+    #         if job['status'] == 'RUNNING':
+    #             new_execution_time = int(event_time - job['last_check_time'])
+    #             job['execution_time'] = int(job['execution_time'] + new_execution_time)
+    #             job['remaining_time'] = int(job['duration'] - job['execution_time'])
 
-            elif job['status'] == 'PENDING':
-                job['execution_time'] = 0
-                job['remaining_time'] = int(job['duration'])
+    #         elif job['status'] == 'PENDING':
+    #             job['execution_time'] = 0
+    #             job['remaining_time'] = int(job['duration'])
 
-            job['last_check_time'] = int(event_time)
+    #         job['last_check_time'] = int(event_time)
 
-        JOBS.runnable_jobs.sort(key = lambda e:e.__getitem__('remaining_time'))
+    #     JOBS.runnable_jobs.sort(key = lambda e:e.__getitem__('remaining_time'))
 
     def move_to_runnable(self, job):
         ''' job gets into the system: pending or running, and finally END'''
@@ -587,6 +554,23 @@ class _TFJobs(object):
 
         utils.print_fn(' ')
 
+    def remove_job_in_events(self, job):
+        event = None
+        tmp_job = None
+        flag = False
+        for event in self.job_events:
+            for tmp_job in event['start_jobs']:
+                if tmp_job['job_idx'] == job['job_idx']:
+                    flag = True
+                    break
+            if flag:
+                break
+        if flag:
+            event['start_jobs'].remove(tmp_job)
+            if len(event['start_jobs']) == 0:
+                self.job_events.remove(event)
+
+
     def add_job_end_event(self, job):
         #for job end 
         tmp_dict = utils.search_dict_list(self.job_events, 'time', job['end_time'])
@@ -612,6 +596,8 @@ class _TFJobs(object):
         end events should be added when they are starting
         '''
         for job in self.job_list:
+            if job['status'] != 'ADDED':
+                continue
             start_t = job['submit_time']
             # utils.print_fn('%d, %d' % (start_t, end_t))
 

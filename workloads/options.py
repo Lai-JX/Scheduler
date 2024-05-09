@@ -38,13 +38,13 @@ parser.add_argument('--num-classes', type=int, default=1000,
 
 
 # specific
-parser.add_argument('--train-dir0', default=os.path.expanduser('/share/datasets/ILSVRC2012_img_train/'),
+parser.add_argument('--train-dir0', default=os.path.expanduser('/share/datasets/ILSVRC2012/train/'),
                     help='path to training data')
-parser.add_argument('--train-dir1', default=os.path.expanduser('/share/datasets/ILSVRC2012_img_train/'),
+parser.add_argument('--train-dir1', default=os.path.expanduser('/share/datasets/ILSVRC2012/train/'),
                     help='path to training data')
-parser.add_argument('--train-dir2', default=os.path.expanduser('/share/datasets/ILSVRC2012_img_train/'),
+parser.add_argument('--train-dir2', default=os.path.expanduser('/share/datasets/ILSVRC2012/train/'),
                     help='path to training data')
-parser.add_argument('--train-dir3', default=os.path.expanduser('/share/datasets/ILSVRC2012_img_train/'),
+parser.add_argument('--train-dir3', default=os.path.expanduser('/share/datasets/ILSVRC2012/train/'),
                     help='path to training data')
 
 parser.add_argument('--prefetch-factor0', type=int, default=2, help='prefatch factor for dataloder.')

@@ -1,4 +1,5 @@
-from runtime.rpc import scheduler_server, scheduler_client
+import csv
+from runtime.rpc import scheduler_server, scheduler_client, operator_server
 from controller import Controller
 from cluster.cluster import CLUSTER
 
@@ -10,14 +11,43 @@ from jobs import JOBS
 import flags
 FLAGS = flags.FLAGS
 
+def parse_job_file(trace_file):
+    fd = open(trace_file, 'r')
+    deli = ','
+    # 根据文件类型确定分隔符
+    if ((trace_file.find('.csv') == (len(trace_file) - 4))):
+        deli = ','
+    elif ((trace_file.find('.txt') == (len(trace_file) - 4))):
+        deli = ' '
+
+    reader = csv.DictReader(fd, delimiter = deli) 
+    ''' Add job from job trace file'''
+    keys = reader.fieldnames
+    utils.print_fn('--------------------------------- Read TF jobs from: %s ---------------------------------' % trace_file) 
+    utils.print_fn('    we get the following fields:\n        %s' % keys)
+    job_idx = 0
+    print("num_gpu_all:",FLAGS.num_gpu_all)
+    for row in reader: 
+        #add job into JOBS,  JOBS = _TFJobs()
+        if int(row['num_gpu']) <= FLAGS.num_gpu_all:     # ljx (row['model_name'] != 'bert' and row['model_name'] != 'gpt2') and 
+            JOBS.add_job(row, True)
+            job_idx += 1
+
+    assert JOBS.num_job == len(JOBS.job_list) 
+    JOBS.sort_all_jobs()
+    utils.print_fn('---------------------------------- Get %d TF jobs in total ----------------------------------' % job_idx)
+    # JOBS.read_all_jobs()
+    fd.close()
+
 class Scheduler(object):
-    def __init__(self, scheduler_port: int, controller_port: int) -> None:
+    def __init__(self, scheduler_port: int, controller_port: int, operator_port: int,) -> None:
         super().__init__()
         print("\nljx: Scheduler init!")
         self._logger = utils.make_logger(__name__, FLAGS.log_path+'/master.log')
 
         self._trainers = dict()                                                     # 根据job_id存对应的client（to trainer）
         self._server_for_trainer = self.make_server_for_trainer(scheduler_port)     # Scheduler._server_for_worker 运行scheduler_server.server
+        self._server_for_operator = self.make_server_for_operator(operator_port)     # Scheduler._server_for_worker 运行scheduler_server.server
 
         self._num_workers = CLUSTER.num_node_p_switch                               # worker=node
         self._controller = Controller(controller_port, self._num_workers)           # Controller._server_for_worker 运行master_server.serve, 会等待所有的worker都准备好了
@@ -45,6 +75,20 @@ class Scheduler(object):
 
         return server_thread
     
+    def make_server_for_operator(self, port):
+        callbacks = {
+            'AddJobs': self._add_jobs_impl,
+            'DeleteJobs': self._delete_jobs_impl, 
+        }
+
+        server_thread = threading.Thread(
+            target=operator_server.serve,
+            args=(port, self._logger, callbacks))
+        server_thread.setDaemon(True)
+        server_thread.start()
+
+        return server_thread
+    
 
     def _register_trainer_impl(self, trainer_ip, trainer_port, job_id_list):
         success = True
@@ -57,7 +101,7 @@ class Scheduler(object):
         self._logger.info(f'scheduler, register, {job_id}-{job_id_list}, {trainer_ip}:{trainer_port}')
 
         return success
-
+    
     def _report_itertime_impl(self, job_id, iter_time, src_utils):
         success = True
         num_gpu = 0
@@ -70,6 +114,26 @@ class Scheduler(object):
             self._src_utils[i] += src_utils[i]*num_gpu
         self._logger.info(f'scheduler, update job {job_id} iter_time {list(iter_time)}; src_utils {src_utils} -> {self._src_utils}')
         return success
+
+    def _add_jobs_impl(self, file_path):
+        success = True
+        JOBS.job_lock.acquire()
+
+        JOBS.print_job_events()
+        parse_job_file(file_path)
+        JOBS.prepare_job_start_events()
+
+        JOBS.job_lock.release()
+        self._logger.info(f'scheduler, add jobs, from path:{file_path}')
+        return success
+    
+    def _delete_jobs_impl(self, job_id_list):
+        success = True
+        for job_id in job_id_list:
+            JOBS.delete_queue.put(job_id)
+        self._logger.info(f'scheduler, delete jobs, job_id_list:{job_id_list}')
+        return success
+    
 
     def query_stats(self, job_id_list):
         job_id = max(job_id_list)

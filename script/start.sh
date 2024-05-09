@@ -18,6 +18,35 @@
 #         fi
 #     done
 # done
+# 输入字符串
+get_gpu_list()
+{
+    input_str=$1
+
+    # 使用 Bash 的内置字符串操作功能来找到 "g" 后面的数字
+    num="${input_str#*g}"
+
+    # 检查找到的数字是否为纯数字
+    if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+        echo "Error: No数字 found after 'g' in the string."
+        exit 1
+    fi
+
+    # 使用循环生成以逗号隔开的字符串
+    gpu_list=""
+    for (( i=0; i<num; i++ )); do
+        if [ "$i" -ne "0" ]; then
+            gpu_list+=","
+        fi
+        gpu_list+="$i"
+    done
+
+    # 输出结果
+    echo "$gpu_list"
+}
+get_gpu_list "n1g4"
+
+exit 
 
 select_placement()
 {

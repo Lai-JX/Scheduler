@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+service Operator {
+    rpc AddJobs (AddJobsRequest) returns (AddJobsResponse) {};
+    rpc DeleteJobs (DeleteJobsRequest) returns (DeleteJobsResponse) {};
+}
+
+message AddJobsRequest {
+    string trace_file = 1;
+}
+
+message AddJobsResponse {
+    bool success = 1;
+}
+
+message DeleteJobsRequest {
+    repeated int32 job_id = 1;
+}
+
+message DeleteJobsResponse {
+    bool success = 1;
+}

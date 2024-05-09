@@ -120,7 +120,7 @@ class Task(object):
 
         utils.print_ljx("task.run:hostfile_list:", hostfile_list)
         utils.print_ljx("log path after here:",self.log_path, '\n')
-        utils.print_ljx('environ_dict["CUDA_VISIBLE_DEVICES"]',self._gpus)
+        utils.print_ljx('CUDA_VISIBLE_DEVICES',self._gpus)
         # exit(0)
         environ_dict = dict(os.environ)
         # environ_dict['CUDA_VISIBLE_DEVICES'] = self._gpus
