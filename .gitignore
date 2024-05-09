@@ -1,0 +1,17 @@
+__pycache__
+tmp
+results
+log
+job_logs
+tf_log
+model
+*.json
+workloads/*.out
+workloads/*.xml
+workloads/hostfiles
+workloads/gpus
+workloads/*.txt
+workloads/datasets
+workloads/models/nlp
+workloads/wikitext-2-raw
+.nfs*

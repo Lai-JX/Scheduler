@@ -1,2 +1,0 @@
-rm ./workloads/*.txt; rm ./workloads/*.out; rm ./workloads/*.xml; rm ./workloads/hostfiles/hostfile-*; rm /root/tmp/*.out; rm /root/tmp/*.xml; rm ./tmp/job/*; rm ./*.out; rm ./*.xml; 
-rm ./workloads/gpus/gpu-*;
