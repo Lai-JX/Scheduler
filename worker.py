@@ -138,7 +138,6 @@ class Worker(object):
         self._check_task_flag = False
         return True
 
-    # Deprecated
     def _get_util_impl(self, secs):
         # prepare
         device_list = range(self._num_gpus)
@@ -219,17 +218,18 @@ class Worker(object):
         #     io_read = sum(io_util_list[1:])/(len(io_util_list)-1)
         # self._logger.info(f'io read: {io_util_list} {io_read}')
         # res = {'SMACT':[], 'SMOCC':[], 'TENSO':[], 'DRAMA':[]}
-        sm_util = 0
-        # with open("/root/tmp/profiling_" + str(self._worker_id) + "_sm.out", 'r') as file:
-        #     lines = file.readlines()
-        #     n, i = len(lines), 1
-        #     while i < n:
-        #         line = lines[i].split()
-        #         if len(line) > 0 and line[0]=='GPU':
-        #             sm_util_list.append(float(line[2]))
-        #         i += 1
-        # sm_util = mean(sm_util_list)
-        # self._logger.info(f'sm_util: {sm_util}')
+        
+        # sm_util = 0
+        with open("/root/tmp/profiling_" + str(self._worker_id) + "_sm.out", 'r') as file:
+            lines = file.readlines()
+            n, i = len(lines), 1
+            while i < n:
+                line = lines[i].split()
+                if len(line) > 0 and line[0]=='GPU':
+                    sm_util_list.append(float(line[2]))
+                i += 1
+        sm_util = mean(sm_util_list)
+        self._logger.info(f'sm_util: {sm_util}')
 
         return gpu_util, cpu_util, sm_util
 

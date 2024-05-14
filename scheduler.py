@@ -26,10 +26,10 @@ def parse_job_file(trace_file):
     utils.print_fn('--------------------------------- Read TF jobs from: %s ---------------------------------' % trace_file) 
     utils.print_fn('    we get the following fields:\n        %s' % keys)
     job_idx = 0
-    print("num_gpu_all:",FLAGS.num_gpu_all)
+    print("num_gpu_all:",CLUSTER.num_gpu)
     for row in reader: 
         #add job into JOBS,  JOBS = _TFJobs()
-        if int(row['num_gpu']) <= FLAGS.num_gpu_all:     # ljx (row['model_name'] != 'bert' and row['model_name'] != 'gpt2') and 
+        if int(row['num_gpu']) <= CLUSTER.num_gpu:     # ljx (row['model_name'] != 'bert' and row['model_name'] != 'gpt2') and 
             JOBS.add_job(row, True)
             job_idx += 1
 
@@ -42,7 +42,7 @@ def parse_job_file(trace_file):
 class Scheduler(object):
     def __init__(self, scheduler_port: int, controller_port: int, operator_port: int,) -> None:
         super().__init__()
-        print("\nljx: Scheduler init!")
+        utils.print_fn("\nljx: Scheduler init!")
         self._logger = utils.make_logger(__name__, FLAGS.log_path+'/master.log')
 
         self._trainers = dict()                                                     # 根据job_id存对应的client（to trainer）

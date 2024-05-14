@@ -10,8 +10,8 @@ cnt = 0
 jct_list = []
 for line_id,line in enumerate(csv_reader):
     if line_id > 0:
-        jct_sum += float(line[-5])
-        makespan = max(makespan, float(line[5]))
+        jct_sum += float(line[-5])                  # JCT
+        makespan = max(makespan, float(line[5]))    # makespan
         cnt += 1
         jct_list.append(float(line[-5]))
 

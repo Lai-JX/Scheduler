@@ -67,23 +67,7 @@ class _TFJobs(object):
         self.cur_time = 0                   # 动态 add jobs 时使用
         self.delete_queue = queue.Queue()
 
-        # mem info in GB
-        # self.worker_mem = 5
-        # self.ps_mem = 6
-        # self.p_w_mem = 0.1
 
-        #sim-gpu-demands
-        # self.gpu_job = dict()
-
-        #gittins static delta
-        # self.gittins_delta = 3250
-
-        # self.mean_duration = 800
-        # self.job_dist_data = None
-
-        # self.overhead_list = []
-        # for _ in range(0, 5):
-        #     self.overhead_list.append([])
 
     def get_job_model(self, job_dict):
         # if job_dict.has_key('model_name') and job_dict.has_key('model_scale'):
@@ -94,67 +78,9 @@ class _TFJobs(object):
         job_dict['model'] = models_msg.get_model(job_dict['model_name'])
 
 
-    def get_network_load(self, job_dict):
-        if 'num_gpu' not in job_dict:
-            utils.print_fn('No gpu information')
-            return 
-
-        if 'model' not in job_dict:
-            utils.print_fn('No model information')
-            return
-        
-        num_w = job_dict['num_gpu']
-        num_ps = num_w
-
-
-        if num_w == 1:
-            job_dict['ps_network'] = list()
-            job_dict['w_network'] = list([0])
-
-            '''
-            check job ps_size 
-            '''
-            job_dict['ps_ave'] = 0
-            return
-
-        job_dict['w_network'] = list([job_dict['model']['total_size']] * num_w)
-        job_dict['ps_network'] = list([0] * num_ps)
-        for i in range(0, len(job_dict['model']['tensors'])):
-            ps_idx = int(i % num_ps)
-            # job_dict['ps_network'][ps_idx] += (job_dict['model']['tensors'][i] * num_w)
-            job_dict['ps_network'][ps_idx] += (job_dict['model']['tensors'][i])
-
-        for i in range(0, len(job_dict['ps_network'])):
-            job_dict['ps_network'][i] = round(job_dict['ps_network'][i], 1)
-
-        '''
-        check the PS job size information  
-        job_dict['ps_ave'] = round(numpy.mean(job_dict['ps_network']), 1)
-        if job_dict['ps_ave'] == 0:
-            print(job_dict)
-
-        s_ps_list = sorted(job_dict['ps_network'], reverse=True) 
-        job_dict['ps_max'] = s_ps_list[0] 
-        max99_idx = int(math.ceil(num_ps * 0.01))
-        job_dict['ps_max99th'] = s_ps_list[max99_idx]
-        job_dict['ps_max_ave'] = round(job_dict['ps_max'] / job_dict['ps_ave'], 1)
-        job_dict['ps_max99_ave'] = round(job_dict['ps_max99th'] / job_dict['ps_ave'], 1)
-        '''
-
 
     def add_job(self, job_dict, add_later=False):
         ''' Add job (job_dict) into job_list'''
-        # job_dict['resource_time'] = list()
-        # for key, value in job_dict.items():
-        # # for key, value in job_dict.iteritems():
-        #     if (value is None) or ('resource_time' == key):
-        #         continue
-        #     if 'resource_time' in key:
-        #         job_dict['resource_time'].append(float(value))
-        #     elif value.isdigit():
-        #         job_dict[key] = int(value)
-        # job_dict['duration'] = int(float(job_dict['duration']))
-        # job_dict['duration'] = int(job_dict['duration'])
         for key, value in job_dict.items():
             if (value is None) or ('resource_time' == key):
                 continue
@@ -163,16 +89,14 @@ class _TFJobs(object):
             elif value.isdigit():
                 job_dict[key] = int(value)
 
-        job_dict['rank'] = sys.maxsize
+        # job_dict['rank'] = sys.maxsize
 
-        # if 'iteration_time' not in job_dict:
-        #     job_dict['iteration_time'] = job_dict['duration'] / job_dict['iterations']
-        # else:
-        if add_later:
+
+        if add_later:           # 后续由用户动态添加的job
             job_dict['submit_time'] = self.cur_time + FLAGS.schedule_interval
         else:
             job_dict['submit_time'] /= 1000
-        # job_dict['duration'] /= 1000          # ljx
+
         self.set_itertime(job_dict)
         job_dict['tput']  = 1/job_dict['iteration_time']
     
@@ -185,34 +109,19 @@ class _TFJobs(object):
             job_dict['end_time'] = 0
         if 'pending_time' not in job_dict:
             job_dict['pending_time'] = 0
-        # if no resource time is provided, we assume there are 3 resources and rand their time
-        # if 'multi-resource' in FLAGS.schedule or 'antman' in FLAGS.schedule:
-        #     # job_dict['executed_iteration'] = 0.0
-        #     job_dict['remaining_iteration'] = float(job_dict['iterations'])
-        #     if 'iteration_time' not in job_dict:
-        #         job_dict['iteration_time'] = float(job_dict['duration'])/float(job_dict['iterations'])
-        #     job_dict['iteration_time_cur'] = copy.deepcopy(job_dict['iteration_time'])
-        #     if len(job_dict['resource_time']) == 0:
-        #         tmp_resource = [random.uniform(1.0, 10.0) for i in range(FLAGS.multi_resource)]
-        #         tmp_resource_sum = sum(tmp_resource)
-        #         tmp_resource_time = [tmp_resource[i]/tmp_resource_sum * float(job_dict['iteration_time']) for i in range(FLAGS.multi_resource) ]
-        #         tmp_resource_time[-1] = float(job_dict['iteration_time']) - sum(tmp_resource_time[:-1])
-        #         job_dict['resource_time'] = copy.deepcopy(tmp_resource_time)
-        #     else:
-        #         for i in range(len(job_dict['resource_time'])):
-        #             job_dict['resource_time'][i] /= 1000
+
 
         if 'submit_time' in job_dict:
             job_dict['r_submit_time'] = int(-1 * job_dict['submit_time'])
-            # job_dict['submit_time'] -= 275400                               # ljx: 减少等待时间
-        if 'antman' in FLAGS.schedule or FLAGS.scheme == 'merge':
-            if 'priority' not in job_dict:
-                job_dict['priority'] = random.randint(0,1)
-            if 'gpu_util' not in job_dict:
-                if job_dict['priority']==0:
-                    job_dict['gpu_util'] = 0.1 # not real                       # ljx
-                else:
-                    job_dict['gpu_util'] = 0.9
+            # job_dict['submit_time'] -= 275400                                 # ljx: 减少等待时间
+        # if 'antman' in FLAGS.schedule or FLAGS.scheme == 'merge':             # ljx: Deprecated
+        #     if 'priority' not in job_dict:
+        #         job_dict['priority'] = random.randint(0,1)
+        #     if 'gpu_util' not in job_dict:
+        #         if job_dict['priority']==0:
+        #             job_dict['gpu_util'] = 0.1 # not real                       # ljx
+        #         else:
+        #             job_dict['gpu_util'] = 0.9
 
         job_dict['start_time'] = sys.maxsize
         job_dict['end_time'] = 0
@@ -235,13 +144,6 @@ class _TFJobs(object):
 
         job_dict['status'] = 'ADDED'
         job_dict['job_idx'] = len(self.job_list)
-        # random the priority of the job: 0 - resource-guarantee job; 1 - opportunistic job
-
-        # job_dict['ps'] = int(job_dict['ps'])
-        # job_dict['worker'] = int(job_dict['worker'])
-        # job_dict['batch_size'] = int(job_dict['batch_size'])
-        # job_dict['num_batch'] = int(job_dict['num_batch'])
-        # job_dict['sleep'] = int(job_dict['sleep'])
 
         job_dict['gpus'] = list()
         job_dict['placements'] = list() #prepare an empty job_placement 
@@ -258,13 +160,6 @@ class _TFJobs(object):
         ]
         '''
 
-        # if ('end_time' in job_dict) and ('duration' not in job_dict):
-        #     job_dict['duration'] = job_dict['end_time'] - job_dict['start_time']
-        # else:
-        #     job_dict['end_time'] = job_dict['start_time'] + job_dict['duration']
-        
-        # if 'model_scale' not in job_dict:
-        #     job_dict['model_scale'] = 1
         #get detailed model inforamtion
         self.get_job_model(job_dict)    # job_dict['model']（是一个dict）
 
@@ -274,15 +169,7 @@ class _TFJobs(object):
         self.job_list.append(job_dict)
         self.num_job += 1
 
-        # if FLAGS.schedule == 'multi-dlas-gpu':
-        #     num_gpu = job_dict['num_gpu']
-        #     if num_gpu not in self.gpu_job:
-        #         # add that job class
-        #         self.gpu_job[num_gpu] = self.g_job(num_gpu)
 
-        #     self.gpu_job[num_gpu].total_job += 1
-        # print(job_dict)
-        # utils.dict_to_json(job_dict,f'{job_dict["job_id"]}.json')
     def set_itertime(self, job_dict):
         tmp_model_name = self.job_name_map[job_dict['model_name']]
         tmp_num_gpu = str(job_dict['num_gpu'])
@@ -291,47 +178,47 @@ class _TFJobs(object):
         else:
             job_dict['iteration_time'] /= 1000
 
-    def print_all_job_size_info(self):
-        '''        
-        print job tensor info
-        '''
+    # def print_all_job_size_info(self):
+    #     '''        
+    #     print job tensor info
+    #     '''
 
-        ps_max_ave_fd = open('ps_max_ave.csv', 'w+')
-        ps_max_ave_writer = csv.writer(ps_max_ave_fd)  
-        ps_max_ave_writer.writerow(['ps_max_ave'])
+    #     ps_max_ave_fd = open('ps_max_ave.csv', 'w+')
+    #     ps_max_ave_writer = csv.writer(ps_max_ave_fd)  
+    #     ps_max_ave_writer.writerow(['ps_max_ave'])
 
-        ps_max99_ave_fd = open('ps_max99_ave.csv', 'w+')
-        ps_max99_ave_writer = csv.writer(ps_max99_ave_fd)  
-        ps_max99_ave_writer.writerow(['ps_max99_ave'])
+    #     ps_max99_ave_fd = open('ps_max99_ave.csv', 'w+')
+    #     ps_max99_ave_writer = csv.writer(ps_max99_ave_fd)  
+    #     ps_max99_ave_writer.writerow(['ps_max99_ave'])
 
-        w_fd = open('w.csv', 'w+')
-        w_writer = csv.writer(w_fd)  
-        w_writer.writerow(['w'])
+    #     w_fd = open('w.csv', 'w+')
+    #     w_writer = csv.writer(w_fd)  
+    #     w_writer.writerow(['w'])
 
-        ps_fd = open('ps.csv', 'w+')
-        ps_writer = csv.writer(ps_fd)  
-        ps_writer.writerow(['ps'])
+    #     ps_fd = open('ps.csv', 'w+')
+    #     ps_writer = csv.writer(ps_fd)  
+    #     ps_writer.writerow(['ps'])
 
-        ps_w_fd = open('ps_w.csv', 'w+')
-        ps_w_writer = csv.writer(ps_w_fd)  
-        ps_w_writer.writerow(['ps_w'])
+    #     ps_w_fd = open('ps_w.csv', 'w+')
+    #     ps_w_writer = csv.writer(ps_w_fd)  
+    #     ps_w_writer.writerow(['ps_w'])
 
-        utils.print_fn("Start to dump job information")
-        for job in self.job_list:
-            if job['ps_ave'] != 0:
-                ps_max_ave_writer.writerow(list([job['ps_max_ave']]))
-                ps_max99_ave_writer.writerow(list([job['ps_max99_ave']]))
-                w_writer.writerow(list([job['w_network'][0]]))
-                # ps_w_writer.writerow(job['w_network'][0])
-                # for ps in job['ps_network']:
-                #     ps_writer.writerow(ps)
-                #     ps_w_writer.writerow(ps)
+    #     utils.print_fn("Start to dump job information")
+    #     for job in self.job_list:
+    #         if job['ps_ave'] != 0:
+    #             ps_max_ave_writer.writerow(list([job['ps_max_ave']]))
+    #             ps_max99_ave_writer.writerow(list([job['ps_max99_ave']]))
+    #             w_writer.writerow(list([job['w_network'][0]]))
+    #             # ps_w_writer.writerow(job['w_network'][0])
+    #             # for ps in job['ps_network']:
+    #             #     ps_writer.writerow(ps)
+    #             #     ps_w_writer.writerow(ps)
                 
-        ps_max_ave_fd.close()
-        ps_max99_ave_fd.close()
-        w_fd.close()
-        ps_fd.close()
-        ps_w_fd.close()
+    #     ps_max_ave_fd.close()
+    #     ps_max99_ave_fd.close()
+    #     w_fd.close()
+    #     ps_fd.close()
+    #     ps_w_fd.close()
         
     def find_runnable_job(self, job_idx):
         for job in self.runnable_jobs:
@@ -340,6 +227,7 @@ class _TFJobs(object):
         print(f'Not found {job_idx} in runnable_jobs.')
         print([job['job_idx'] for job in self.runnable_jobs])
         assert 1==0
+
     def find_job_by_id(self, job_id):
         for job in self.job_list:
             if job['job_id'] == job_id:
@@ -350,7 +238,7 @@ class _TFJobs(object):
 
     def read_job_info(self, job_idx, field=None):
         ''' Read  job information, if field == NONE, show all job info'''
-        ''' job_id,num_gpu,submit_time,start_time,duration,model_size,aggr_interval '''
+        ''' job_id,num_gpu,submit_time,start_time,duration,model_size '''
         print('  Job[%d]: ' % job_idx)
 
         for job in self.job_list:
@@ -380,13 +268,7 @@ class _TFJobs(object):
     def sort_all_jobs(self, mode=None):
         '''
         Sort jobs based on their sumbit_time
-        j1, num_gpu, start_t, end_t, duration
         '''
-        # tmp_list = sorted(self.job_list, key = lambda e:e.__getitem__('start_time'))
-        # tmp_dict = utils.search_dict_list(self.job_list, 'start_time', 4)
-        # tmp_dict['end_time'] = 15
-        # print(tmp_dict)
-        # self.job_list = tmp_list
         
         # ljx：缩放时间
         # max_submit_time = 0.0
@@ -398,9 +280,9 @@ class _TFJobs(object):
         self.job_list.sort(key = lambda e:e.__getitem__('submit_time'))
         utils.print_fn('   Jobs are sorted with their start time')
         # self.read_all_jobs()
-        if FLAGS.schedule == 'multi-dlas-gpu' and FLAGS.scheme == 'count':
-            for num_gpu, gjob in self.gpu_job.items():
-                utils.print_fn('%d-GPU jobs have %d ' % (num_gpu, gjob.total_job))
+        # if FLAGS.schedule == 'multi-dlas-gpu' and FLAGS.scheme == 'count':
+        #     for num_gpu, gjob in self.gpu_job.items():
+        #         utils.print_fn('%d-GPU jobs have %d ' % (num_gpu, gjob.total_job))
 
     def create_multi_nodes_placement(self, job, switch_id, node_list):
         tmp_dict = dict() 
@@ -420,7 +302,7 @@ class _TFJobs(object):
     def create_single_node_placement(self, job, switch_id, node_id, num_gpu, num_cpu, mem=0, gpu_list=[], not_first=False):
         '''
         under this switch, there is only one need used
-        {'switch': xx, 'nodes': [{'id':xx, 'num_gpu':xxx, 'num_cpu': xxx, 'network': xxxx, 'tasks': [w0, w1, ps1]}]}
+        {'switch': xx, 'nodes': [{'id':xx, 'num_gpu':xxx, 'num_cpu': xxx, 'tasks': [w0, w1, ps1]}]}
         '''
         if not_first:
             node_dict = job['placements'][0]['nodes'][0]
@@ -438,23 +320,21 @@ class _TFJobs(object):
             node_dict['num_cpu'] = num_cpu
             node_dict['job_per_gpu_mem'] = mem
             node_dict['tasks'] = list()
-            # node_dict['network'] = round(sum(job['w_network']) + sum(job['ps_network']), 1)
-            # node_dict['network'] = 0 #single machine, no network traffic
-            node_dict['gpu_list'] = gpu_list        # [i.idx for i in gpu_list]
+
+            node_dict['gpu_list'] = gpu_list     
 
             tmp_dict['nodes'] = list()
             tmp_dict['nodes'].append(node_dict)
             job['placements'].append(tmp_dict)
 
-        # return node_dict['network']
 
-    # def remove_from_pending(self, job, event_time):
-    #     job['status'] = 'RUNNING'
-    #     job['start_time'] = event_time
-    #     job['end_time'] = job['start_time'] + job['duration']
-    #     job['pending_time'] = job['start_time'] - job['submit_time']
+    def remove_from_pending(self, job, event_time):             # ljx:Deprecated
+        job['status'] = 'RUNNING'
+        job['start_time'] = event_time
+        job['end_time'] = job['start_time'] + job['duration']
+        job['pending_time'] = job['start_time'] - job['submit_time']
 
-    #     self.pending_jobs.remove(job)
+        self.pending_jobs.remove(job)
 
     def move_to_pending(self, job):
         job['status'] = 'PENDING'
@@ -508,16 +388,8 @@ class _TFJobs(object):
         job['pending_time'] = 0
         job['last_pending_time'] = 0 # how much pending_time the job has since last entering the highest priority queue
         self.runnable_jobs.append(job)
-        # if FLAGS.schedule == 'multi-dlas-gpu':
-        #     num_gpu = job['num_gpu']
-        #     self.gpu_job[num_gpu].runnable_jobs.append(job)
-        # elif 'multi-resource' in FLAGS.schedule or 'antman' in FLAGS.schedule or FLAGS.scheme == 'merge':
-        #     # job['executed_iteration'] = 0
-        #     self.runnable_jobs.append(job)
-        # else:
-        #     self.runnable_jobs.append(job)
-    
-    def update_priority_queues(self, gputime=False):
+
+    def update_priority_queues(self, gputime=False):                # ljx:Deprecated
         for queue in self.queues:
             del queue[:]
         for job in self.runnable_jobs:
@@ -623,32 +495,123 @@ class _TFJobs(object):
         self.print_job_events()
         utils.print_fn('--------------------------------- End of job events ---------------------------------')
 
+    def print_placement(self, ejob):
+        print("placement of job ", ejob['job_idx'])
+        print(ejob['placements'])
 
-    # def add_migratable(self, job):
-    #     '''
-    #     add job into migratable job list 
-    #     1. distributed jobs
-    #     2. running jobs
-    #     3. ?
-    #     '''
-    #     if job['num_w'] <= 1:
-    #         return
+    def to_jobinfo(self, tmp_ejob, is_packing=False):  
+        '''
+        根据job生成RPC接口参数，用于执行或kill任务
+        '''
 
-    #     #if job is distributed ?
+        
+        jobinfo = None
 
-    #     if job not in self.migratable_jobs:
-    #         self.migratable_jobs.append(job)            
+        gpu_list = {}
+        if not is_packing:
+            ejob = [tmp_ejob]
+            # while len(ejob)<FLAGS.multi_resource:
+            while len(ejob)<4:
+                ejob.append(None)
+        else:
+            ejob = tmp_ejob
+        
+        if len(ejob[0]['placements'])!=1:
+            print(len(ejob[0]['placements']),ejob[0])
+        assert len(ejob[0]['placements'])==1    # 重新调度前job的placement会被清除，所以基本只会有一个placement
+        placement = ejob[0]['placements'][0]
+        job_id_list = [rjob['job_idx'] if rjob!=None else -1 for rjob in ejob]
+        job_name_list = [rjob['model_name'] if rjob!=None else '-1' for rjob in ejob]    # ljx: 根据workloads/run.sh，这里 '0' 应该改为 '-1'(其实关系不大，因为batch_size为0，模型不会被运行)
+        batch_size_list = [rjob['batch_size'] if rjob!=None else 0 for rjob in ejob]
 
+        iters_list = [rjob['remaining_iterations'] if rjob!=None else 0 for rjob in ejob]
+        
+        job_counter_list = [rjob['job_counter'] if rjob!=None else 0 for rjob in ejob]
+        job_num = len(ejob)
+        node_id_list = []
+        for node in placement['nodes']:
+            node_id = node['id']
+            node_id_list.append(node_id)
+            assert node_id not in gpu_list
+            # assert len(placement['nodes'])==1 or (len(placement['nodes'])>1 and len(node['gpu_list'])==8)       # ljx: 将8改为2，每个节点只有4个gpu
+            for gpu in node['gpu_list']:
+                if node_id not in gpu_list:
+                    gpu_list[node_id] = str(gpu.idx)
+                else:
+                    gpu_list[node_id] += f',{gpu.idx}'          # gpu_list={'node_id':gpu_list}
+        gpu_list_str=[]
+        for k,v in gpu_list.items():
+            gpu_list_str.append(str(k)+'-'+v)
+        gpu_list_str = "/".join(gpu_list_str)
+        resumed_list = [True if rjob and rjob['resume'] > 0 else False for rjob in ejob]                                   # 是否为之前执行过的job
+        # jobinfo = JobInfo(num=job_num, gpus=gpu_list[node_id_list[0]], num_gpu=ejob[0]['num_gpu'])
+        jobinfo = JobInfo(num=job_num, gpus=gpu_list_str, num_gpu=ejob[0]['num_gpu'])                   # id0-gpu_list0/id1-gpu_list1/...
+        jobinfo.node_id.extend(node_id_list)
+        jobinfo.job_id.extend(job_id_list)
+        jobinfo.job_name.extend(job_name_list)
+        jobinfo.batch_size.extend(batch_size_list)
+        jobinfo.iterations.extend(iters_list)
+        jobinfo.job_counter.extend(job_counter_list)
+        jobinfo.is_resumed.extend(resumed_list)
+        # exit(0)
+        return jobinfo
+    
+    # below is deprecated
 
-    # def remove_migratable(self, job):
-    #     '''
-    #     remove from migratable job list
-
-    #     '''
-    #     if job in self.migratable_jobs:
-    #         self.migratable_jobs.remove(job)
-
-
+    def calc_packing_finished_info(self, rjob, tmp_time, last_check_time):
+        iter_list = list()
+        # print('in calc_packing_info: ', rjob['job_idx'], [tjob.job_idx for tjob in rjob['packing'].packing_jobs])
+        if rjob['packing']==None:
+            iter_list.append(rjob['remaining_iterations'])
+        else:
+            for pjob_mini in rjob['packing'].packing_jobs:
+                pjob=self.find_runnable_job(pjob_mini.job_idx)
+                iter_list.append(pjob['remaining_iterations'])
+            sim_itertime = rjob['packing'].calc_iteration_time()
+            real_itertime = rjob['real_itertime'][0]
+            overhead_error = (real_itertime-sim_itertime)/sim_itertime
+            self.overhead_list[len(rjob['packing'].packing_jobs)].append(overhead_error)
+                # print(pjob['job_idx'], pjob['real_itertime'], pjob['remaining_iterations'])
+        iter_list = list(set(iter_list))
+        iter_list.sort()
+        if iter_list[0]==0:
+            del iter_list[0]
+        # print('calc_packing_finished_info, real_itertime vs iter_list: ', iter_list)
+        assert len(rjob['real_itertime']) == len(iter_list)
+        finished_iteration = 0
+        if rjob['last_finish_time']>last_check_time:
+            overhead_time = copy.deepcopy(rjob['last_finish_time'])
+            # print('calc jobs: ', rjob['job_idx'], rjob['last_iters'])
+            last_iter = 0
+            assert len(rjob['last_iters']) == len(rjob['real_itertime'])
+            for idx, itertime in enumerate(rjob['real_itertime']):
+                overhead_time -= (rjob['last_iters'][idx]-last_iter) * itertime
+                last_iter = rjob['last_iters'][idx]
+        else:
+            overhead_time = last_check_time
+        remaining_time = tmp_time - overhead_time
+        finished_time = overhead_time
+        done_idx = 0
+        last_iter = 0
+        # print('calc jobs: ', rjob['job_idx'], overhead_time-last_check_time)
+        for idx, iters in enumerate(iter_list):
+            if iters > rjob['remaining_iterations']:
+                break
+            time0 = (iters-last_iter)*rjob['real_itertime'][idx]
+            if remaining_time - time0>=0:
+                remaining_time -= time0
+                finished_time += time0
+                finished_iteration += (iters-last_iter)
+                done_idx += 1
+                last_iter = iters
+            else:
+                finished_time = tmp_time
+                finished_iteration += int(remaining_time / rjob['real_itertime'][idx])
+                break
+        
+        assert finished_iteration<=rjob['remaining_iterations']
+        return finished_time, finished_iteration, done_idx
+    
     def add_gpu_job(self, job):
         '''
         only used in sim-gpu-demands
@@ -788,154 +751,6 @@ class _TFJobs(object):
         self.gpu_job[16].runnable_jobs.extend([5,6,7,8,9])
 
         self.reserve_gpus(total_num)
-
-    def print_placement(self, ejob):
-        print("placement of job ", ejob['job_idx'])
-        print(ejob['placements'])
-
-    def to_jobinfo(self, tmp_ejob, is_packing=False):  
-        '''
-        tmp_ejob可以是job list，也可以是一个job，通过is_packing来确定。
-        通过代码可知，如果是job_list，则这些job利用的资源应该相同
-        '''
-
-        
-        jobinfo = None
-
-        gpu_list = {}
-        if not is_packing:
-            ejob = [tmp_ejob]
-            # while len(ejob)<FLAGS.multi_resource:
-            while len(ejob)<4:
-                ejob.append(None)
-        else:
-            ejob = tmp_ejob
-
-        # if is_kill:
-        #     job_id_list = [rjob['job_idx'] if rjob!=None else -1 for rjob in ejob]
-        #     job_counter_list = [rjob['job_counter'] if rjob!=None else 0 for rjob in ejob]
-        #     jobinfo = JobInfo()                   
-        #     jobinfo.job_id.extend(job_id_list)
-        #     jobinfo.job_counter.extend(job_counter_list)
-        #     return jobinfo
-        
-        if len(ejob[0]['placements'])!=1:
-            print(len(ejob[0]['placements']),ejob[0])
-        assert len(ejob[0]['placements'])==1    # 重新调度前job的placement会被清除，所以基本只会有一个placement
-        placement = ejob[0]['placements'][0]
-        job_id_list = [rjob['job_idx'] if rjob!=None else -1 for rjob in ejob]
-        job_name_list = [rjob['model_name'] if rjob!=None else '-1' for rjob in ejob]    # ljx: 根据workloads/run.sh，这里 '0' 应该改为 '-1'(其实关系不大，因为batch_size为0，模型不会被运行)
-        batch_size_list = [rjob['batch_size'] if rjob!=None else 0 for rjob in ejob]
-        # print(FLAGS.fast_forwarding)
-        # if FLAGS.fast_forwarding>0:
-        #     iters_list0 = [rjob['remaining_iterations'] if rjob!=None else 0 for rjob in ejob]
-        #     iters_sorted = sorted(list(set(iters_list0)))
-        #     tmp_iter = 5
-        #     iters_list = [0,0,0,0]
-        #     num_jobs = sum([1 if rjob!=None else 0 for rjob in ejob])
-        #     for iters in iters_sorted:
-        #         if iters==0:
-        #             continue
-        #         tmp_iter += int(FLAGS.fast_forwarding/num_jobs)
-        #         # tmp_iter += int(60/num_jobs)
-        #         for idx, iter0 in enumerate(iters_list0):
-        #             if iter0 == iters:
-        #                 iters_list[idx] = tmp_iter      # 若iters_list0=[7447,7500,0,0]，则iters_list=[35,65,0,0](两个job)
-        #     last_iters = list(set(iters_list))
-        #     last_iters.sort()
-        #     # print('jobs, to_info:', last_iters)
-        #     if last_iters[0]==0:
-        #         del last_iters[0]
-        #     for rjob in ejob:
-        #         if rjob!=None:
-        #             rjob['last_iters'] = last_iters
-        # else:
-        iters_list = [rjob['remaining_iterations'] if rjob!=None else 0 for rjob in ejob]
-        
-        job_counter_list = [rjob['job_counter'] if rjob!=None else 0 for rjob in ejob]
-        job_num = len(ejob)
-        node_id_list = []
-        for node in placement['nodes']:
-            node_id = node['id']
-            node_id_list.append(node_id)
-            assert node_id not in gpu_list
-            # assert len(placement['nodes'])==1 or (len(placement['nodes'])>1 and len(node['gpu_list'])==8)       # ljx: 将8改为2，每个节点只有4个gpu
-            for gpu in node['gpu_list']:
-                if node_id not in gpu_list:
-                    gpu_list[node_id] = str(gpu.idx)
-                else:
-                    gpu_list[node_id] += f',{gpu.idx}'          # gpu_list={'node_id':gpu_list}
-        gpu_list_str=[]
-        for k,v in gpu_list.items():
-            gpu_list_str.append(str(k)+'-'+v)
-        gpu_list_str = "/".join(gpu_list_str)
-        resumed_list = [True if rjob and rjob['resume'] > 0 else False for rjob in ejob]                                   # 是否为之前执行过的job
-        # jobinfo = JobInfo(num=job_num, gpus=gpu_list[node_id_list[0]], num_gpu=ejob[0]['num_gpu'])
-        jobinfo = JobInfo(num=job_num, gpus=gpu_list_str, num_gpu=ejob[0]['num_gpu'])                   # id0-gpu_list0/id1-gpu_list1/...
-        jobinfo.node_id.extend(node_id_list)
-        jobinfo.job_id.extend(job_id_list)
-        jobinfo.job_name.extend(job_name_list)
-        jobinfo.batch_size.extend(batch_size_list)
-        jobinfo.iterations.extend(iters_list)
-        jobinfo.job_counter.extend(job_counter_list)
-        jobinfo.is_resumed.extend(resumed_list)
-        # exit(0)
-        return jobinfo
-
-    def calc_packing_finished_info(self, rjob, tmp_time, last_check_time):
-        iter_list = list()
-        # print('in calc_packing_info: ', rjob['job_idx'], [tjob.job_idx for tjob in rjob['packing'].packing_jobs])
-        if rjob['packing']==None:
-            iter_list.append(rjob['remaining_iterations'])
-        else:
-            for pjob_mini in rjob['packing'].packing_jobs:
-                pjob=self.find_runnable_job(pjob_mini.job_idx)
-                iter_list.append(pjob['remaining_iterations'])
-            sim_itertime = rjob['packing'].calc_iteration_time()
-            real_itertime = rjob['real_itertime'][0]
-            overhead_error = (real_itertime-sim_itertime)/sim_itertime
-            self.overhead_list[len(rjob['packing'].packing_jobs)].append(overhead_error)
-                # print(pjob['job_idx'], pjob['real_itertime'], pjob['remaining_iterations'])
-        iter_list = list(set(iter_list))
-        iter_list.sort()
-        if iter_list[0]==0:
-            del iter_list[0]
-        # print('calc_packing_finished_info, real_itertime vs iter_list: ', iter_list)
-        assert len(rjob['real_itertime']) == len(iter_list)
-        finished_iteration = 0
-        if rjob['last_finish_time']>last_check_time:
-            overhead_time = copy.deepcopy(rjob['last_finish_time'])
-            # print('calc jobs: ', rjob['job_idx'], rjob['last_iters'])
-            last_iter = 0
-            assert len(rjob['last_iters']) == len(rjob['real_itertime'])
-            for idx, itertime in enumerate(rjob['real_itertime']):
-                overhead_time -= (rjob['last_iters'][idx]-last_iter) * itertime
-                last_iter = rjob['last_iters'][idx]
-        else:
-            overhead_time = last_check_time
-        remaining_time = tmp_time - overhead_time
-        finished_time = overhead_time
-        done_idx = 0
-        last_iter = 0
-        # print('calc jobs: ', rjob['job_idx'], overhead_time-last_check_time)
-        for idx, iters in enumerate(iter_list):
-            if iters > rjob['remaining_iterations']:
-                break
-            time0 = (iters-last_iter)*rjob['real_itertime'][idx]
-            if remaining_time - time0>=0:
-                remaining_time -= time0
-                finished_time += time0
-                finished_iteration += (iters-last_iter)
-                done_idx += 1
-                last_iter = iters
-            else:
-                finished_time = tmp_time
-                finished_iteration += int(remaining_time / rjob['real_itertime'][idx])
-                break
-        
-        assert finished_iteration<=rjob['remaining_iterations']
-        return finished_time, finished_iteration, done_idx
-
 
 JOBS = _TFJobs()
 

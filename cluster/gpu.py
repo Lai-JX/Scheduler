@@ -12,10 +12,6 @@ class _GPU(object):
         self.gpu_id = gpu_id
         self.idx = idx       
         self.gpu_mem = gpu_mem
-        #network load: can be bw, or the amount of traffic
-        # in and out should be the same
-        # self.network_in = 0
-        # self.network_out = 0
 
         self.free_mem = self.gpu_mem
         self.job_list = []
@@ -30,10 +26,6 @@ class _GPU(object):
         self.gpu_id = gpu_id
         self.idx = idx       
         self.gpu_mem = gpu_mem
-        #network load: can be bw, or the amount of traffic
-        # in and out should be the same
-        # self.network_in = 0
-        # self.network_out = 0
 
         self.free_mem = self.gpu_mem     
         self.job_list = []   

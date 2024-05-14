@@ -21,9 +21,6 @@ m_mem = {'resnet18':6432, 'shufflenet_v2_x1_0':5252, 'vgg19':4304, 'vgg16':4224,
 # m_mem = [0.60, 0.55, 0.45, 0.13, 0.85, 0.70, 0.50, 0.85, 0.80]
 # m_mem = [1, 1, 1, 1, 1, 1, 1, 1, 1]
 
-worker_mem = 5
-ps_mem = 8
-per_worker_mem = 0.2
 
 
 def get_model(model_name):

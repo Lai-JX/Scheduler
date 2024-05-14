@@ -89,43 +89,13 @@ class _Node(object):
 
 
     def alloc_gpus(self,job_mem=0, avail_gpu_list=None, job=None):
-        '''
-        If enough free gpus, allocate gpus
-        Return: True, for success;
-                False, for failure
-        '''
-        # if num_gpu > self.free_gpus:
-        #     return False
-        # else:
-        #     self.free_gpus -= num_gpu
-        #     for avail_gpu in avail_gpu_list:
-        #         avail_gpu.job_list.append(job_idx)
-        #         avail_gpu.free_mem -= job_mem
-        #     return True
         for avail_gpu in avail_gpu_list:
             avail_gpu.job_list.append(job)
             avail_gpu.free_mem -= job_mem
         return True
 
     def release_gpus(self,job_mem=0, avail_gpu_list=None, job=None):
-        '''
-        release using gpus back to free list
-        '''
-        # if priority>=0:
-        #     for avail_gpu in avail_gpu_list:
-        #         if job_idx in self.gpu_job_list[avail_gpu][priority]:
-        #             assert job_idx in self.gpu_job_list[avail_gpu][priority]
-        #             self.gpu_job_list[avail_gpu][priority].remove(job_idx)
-        #             self.gpu_util_list[avail_gpu] -= gpu_util
-        # if priority!=1:
-        #     if self.free_gpus + num_gpu > self.num_gpu:
-        #         self.free_gpus = self.num_gpu
-        #         return False
-        #     else:
-        #         self.free_gpus += num_gpu
-        #         return True
-        # else:
-        #     return True
+
         for avail_gpu in avail_gpu_list:
             avail_gpu.job_list.remove(job)
             avail_gpu.free_mem += job_mem
@@ -163,27 +133,6 @@ class _Node(object):
             return True 
 
 
-    '''network'''
-
-    def add_network_load(self, in_load=0, out_load=0):
-        self.network_in += in_load
-        self.network_out += out_load
-        self.network_in = round(self.network_in, 1)
-        self.network_out = round(self.network_in, 1)
-
-
-    def release_network_load(self, in_load=0, out_load=0):
-        self.network_in -= in_load
-        self.network_out -= out_load
-        self.network_in = round(self.network_in, 1)
-        self.network_out = round(self.network_in, 1)
-
-    def set_network_load(self, in_load=0, out_load=0):
-        self.network_in = in_load
-        self.network_out = out_load
-        self.network_in = round(self.network_in, 1)
-        self.network_out = round(self.network_in, 1)
-
 
     def alloc_job_res(self, num_cpu=0, job_mem=0, avail_gpu_list=None, job=None):
         '''
@@ -213,7 +162,7 @@ class _Node(object):
     def release_job_res(self, node_dict,job=None):
         '''
         input is node_dict from placement
-        {'id':xx, 'num_gpu':xxx, 'num_cpu': xxx, 'network': xxxx, 'tasks': [w2, ps2]}
+        {'id':xx, 'num_gpu':xxx, 'num_cpu': xxx, 'tasks': [w2, ps2]}
         '''
         # self.release_network_load(node_dict['network'], node_dict['network'])
         # cpu = True

@@ -30,7 +30,7 @@ shift
 # jobs=('trace_data_new1')
 jobs=('cluster_trace_12')
 # setups=("n4g8")
-setups=("n1g1")
+setups=("n1g2")
 # schedule_intervals=("150")          # 调度间隔
 schedule_intervals=("60")          # 调度间隔
 
@@ -121,7 +121,7 @@ for setup in ${setups[@]};do                                                    
                 echo -e '\nstart worker\n'
                 echo "python $THIS_DIR/worker.py --master_ip $SCHEDULER_IP --worker_port $WORKER_PORT --trace_name ${job_log} --this-dir ${THIS_DIR} $arg &"
                 get_gpu_list $setup
-                python -u $THIS_DIR/worker.py --master_ip $SCHEDULER_IP --worker_port $WORKER_PORT --trace_name ${job_log} --this-dir ${THIS_DIR} $arg --log_path=$THIS_DIR/${log_name}/worker${WORKER_ID}.log --gpus=$gpu_list >$THIS_DIR/${log_name}/worker${WORKER_ID}.out &     # ljx 由于家目录共享，所以加个WORKER_ID区分一下不同worker.out 添加--log_path=$THIS_DIR/${log_name} --gpus='0,1'
+                python -u $THIS_DIR/worker.py --master_ip $SCHEDULER_IP --worker_port $WORKER_PORT --trace_name ${job_log} --this-dir ${THIS_DIR} $arg --log_path=$THIS_DIR/${log_name}/worker${WORKER_ID}.log --gpus="$gpu_list" >$THIS_DIR/${log_name}/worker${WORKER_ID}.out &     # ljx 由于家目录共享，所以加个WORKER_ID区分一下不同worker.out 添加--log_path=$THIS_DIR/${log_name} --gpus='0,1'
                 # python /home/jxlai/project/Muri_exp/worker.py --master_ip 10.0.0.11 --worker_port 9001 --trace_name /home/jxlai/project/Muri_exp/job_logs/n4g4jcluster_tracep4si60ff60/dlas-gpu-yarn-4 --this-dir /home/jxlai/project/Muri_exp
                 wait
 
