@@ -75,16 +75,16 @@ docker pull laijx1/muri:latest
 - 设置`Makefile`中的`IP`、`WORKER_PORT`、`TRAINER_PORT`、`SCHEDULERS`等参数
 - 在master节点
   ``` shell
-  make all
+  make run
   ```
 - 在worker节点
   ``` shell
   # worker节点1
-  make all1
+  make run1
   # worker节点2
-  make all2
+  make run2
   # worker节点3
-  make all3
+  make run3
   ```
 # 备注
 - 改编自 [Muri/cluster_exp](https://github.com/Rivendile/Muri/tree/main/cluster_exp)

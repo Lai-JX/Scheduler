@@ -8,12 +8,12 @@ clean:
 	rm -rf runtime/rpc_stubs/*_pb2.py runtime/rpc_stubs/*_pb2_grpc.py
 
 push:
-	git add .; git commit -m update; git push -u origin main;
+	git add .; git commit -m update; git push origin dev;
 pull:
-	git pull origin main;
+	git pull origin dev;
 
 reset:
-	git fetch; git reset --hard HEAD; git merge origin/master
+	git fetch; git reset --hard HEAD; git merge origin/dev
 
 help:
 	python run.py --help
